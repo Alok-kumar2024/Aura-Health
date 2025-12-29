@@ -1,8 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-
-from db import find_interactions
-from ai_explainer import explain
+from graph_api.db import find_interactions
+from graph_api.ai_reasoner import explain_interaction
 
 app = FastAPI(title="AuraHealth")
 
