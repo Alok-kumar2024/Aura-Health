@@ -64,7 +64,7 @@ class MealData {
   final String id;
   final String mealName;      // Will hold the 'Food' name
   final DateTime timestamp;   // Generated locally
-  final int safetyScore;      // Calculated based on interaction
+  // final int safetyScore;      // Calculated based on interaction
   final String status;        // 'safe', 'warning', 'critical'
   final List<String> ingredients; // Will hold [Food, Drug]
   final int interactionCount;
@@ -76,7 +76,7 @@ class MealData {
     required this.id,
     required this.mealName,
     required this.timestamp,
-    required this.safetyScore,
+    // required this.safetyScore,
     required this.status,
     required this.ingredients,
     required this.interactionCount,
@@ -86,27 +86,35 @@ class MealData {
   // --- THE BRIDGE: Converts API Data to UI Data ---
   factory MealData.fromInteraction(InteractionResponse response) {
 
-    // Logic: Check if any interaction is NEGATIVE
-    final hasNegative = response.interactions.any((i) => i.relation == "NEGATIVE_INTERACTION");
-    final count = response.interactions.length;
+    final hasNegative = response.interactions.any((i) =>
+    i.relation == "NEGATIVE_INTERACTION");
 
-    // Logic: Calculate Score & Status
-    int score = 100;
-    String status = 'safe';
+    final hasWarning = response.interactions.any((i) =>
+    i.relation != "NEGATIVE_INTERACTION" &&
+        i.relation != "SAFE" &&
+        i.relation != "POSITIVE_INTERACTION"
+    );
+
+    final count = response.interactions.where((i){
+      return i.relation != "SAFE" &&
+          i.relation != "POSITIVE_INTERACTION";
+    }).length;
+
+    // 3. SET STATUS
+    String status = 'safe'; // Default (Green)
+
 
     if (hasNegative) {
-      score = 45; // Critical score
-      status = 'critical';
-    } else if (count > 0) {
-      score = 75; // Warning score
-      status = 'warning';
+      status = 'critical'; // Red
+    } else if (hasWarning) {
+      status = 'warning';  // Orange
     }
 
     return MealData(
       id: const Uuid().v4(), // Generate random ID
       mealName: response.food, // The main title is the Food
       timestamp: DateTime.now(), // Use current time
-      safetyScore: score,
+      // safetyScore: score,
       status: status,
       ingredients: [response.food, response.drug], // Display tags
       interactionCount: count,

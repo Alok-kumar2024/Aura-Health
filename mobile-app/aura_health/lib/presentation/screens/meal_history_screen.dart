@@ -1,12 +1,12 @@
-import 'package:aura_heallth/colors/app_colors.dart';
+import 'package:aura_heallth/colors/app_colors.dart'; // Adjust path if needed
 import 'package:aura_heallth/state/meal_history_provider.dart';
-// Import the Result Screen so we can navigate to details
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:intl/intl.dart';
 
 import '../../model/meal_data.dart';
+import 'analysis_result_screen.dart';
 
 class MealHistoryScreen extends ConsumerStatefulWidget {
   const MealHistoryScreen({super.key});
@@ -26,11 +26,16 @@ class _MealHistoryScreenState extends ConsumerState<MealHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final asyncMeals = ref.watch(displayedMealsProvider);
+    // 1. FILTERED LIST (For showing the cards)
+    final asyncDisplayedMeals = ref.watch(displayedMealsProvider);
+
+    // 2. FULL LIST (For calculating stats and badge counts correctly)
+    final asyncFullList = ref.watch(allMealsNotifier);
+
     final currentFilter = ref.watch(filterProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA), // Clean off-white background
+      backgroundColor: const Color(0xFFF8F9FA),
       body: RefreshIndicator(
         onRefresh: () async => ref.refresh(allMealsNotifier.future),
         color: const Color(0xFF1E88E5),
@@ -40,18 +45,18 @@ class _MealHistoryScreenState extends ConsumerState<MealHistoryScreen> {
           slivers: [
             _buildSliverAppBar(),
 
-            // 1. Stats Summary Row
+            // 1. Stats Summary Row (Uses FULL List)
             SliverToBoxAdapter(
-              child: _buildStatsOverview(asyncMeals),
+              child: _buildStatsOverview(asyncFullList),
             ),
 
-            // 2. Filter Tabs
+            // 2. Filter Tabs (Uses FULL List so counts don't disappear)
             SliverPinnedHeader(
-              child: _buildFilterTabs(currentFilter, asyncMeals),
+              child: _buildFilterTabs(currentFilter, asyncFullList),
             ),
 
-            // 3. The List or States
-            asyncMeals.when(
+            // 3. The List of Meals (Uses FILTERED List)
+            asyncDisplayedMeals.when(
               data: (meals) {
                 if (meals.isEmpty) {
                   return _buildEmptyState();
@@ -89,20 +94,20 @@ class _MealHistoryScreenState extends ConsumerState<MealHistoryScreen> {
     return SliverAppBar(
       expandedHeight: 180.0,
       pinned: true,
-      backgroundColor: const Color(0xFF1E88E5), // Solid color when collapsed
+      backgroundColor: const Color(0xFF1E88E5),
       elevation: 0,
       stretch: true,
-      leading: IconButton(
-        icon: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
-        ),
-        onPressed: () => Navigator.pop(context),
-      ),
+      // leading: IconButton(
+      //   icon: Container(
+      //     padding: const EdgeInsets.all(8),
+      //     decoration: BoxDecoration(
+      //       color: Colors.white.withOpacity(0.2),
+      //       shape: BoxShape.circle,
+      //     ),
+      //     child: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
+      //   ),
+      //   onPressed: () => Navigator.pop(context),
+      // ),
       title: const Text(
         "Meal History",
         style: TextStyle(
@@ -130,7 +135,7 @@ class _MealHistoryScreenState extends ConsumerState<MealHistoryScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 50),
-                  // Glassmorphic Search Bar
+                  // Search Bar
                   Container(
                     height: 50,
                     decoration: BoxDecoration(
@@ -171,18 +176,17 @@ class _MealHistoryScreenState extends ConsumerState<MealHistoryScreen> {
   }
 
   Widget _buildStatsOverview(AsyncValue<List<MealData>> asyncMeals) {
-    // CALCULATE DYNAMIC STATS
+    // FIX 1: Use Full List
     final meals = asyncMeals.value ?? [];
     final totalScans = meals.length.toString();
 
-    // Calculate Average Score
-    String avgScore = "0";
-    if (meals.isNotEmpty) {
-      final sum = meals.fold(0, (prev, element) => prev + element.safetyScore);
-      avgScore = (sum / meals.length).toStringAsFixed(0);
-    }
+    // FIX 2: Uncommented Average Score Logic
+    // String avgScore = "0";
+    // if (meals.isNotEmpty) {
+    //   final sum = meals.fold(0, (prev, element) => prev + element.safetyScore);
+    //   avgScore = (sum / meals.length).toStringAsFixed(0);
+    // }
 
-    // Calculate Alerts
     final alerts = meals.where((m) => m.interactionCount > 0).length.toString();
 
     return Padding(
@@ -196,12 +200,12 @@ class _MealHistoryScreenState extends ConsumerState<MealHistoryScreen> {
             label: 'Total Scans',
           ),
           const SizedBox(width: 12),
-          _buildStatItem(
-            icon: Icons.health_and_safety_rounded,
-            color: Colors.green,
-            value: avgScore,
-            label: 'Avg Score',
-          ),
+          // _buildStatItem(
+          //   icon: Icons.health_and_safety_rounded,
+          //   color: Colors.green,
+          //   value: avgScore,
+          //   label: 'Avg Score',
+          // ),
           const SizedBox(width: 12),
           _buildStatItem(
             icon: Icons.warning_amber_rounded,
@@ -272,6 +276,7 @@ class _MealHistoryScreenState extends ConsumerState<MealHistoryScreen> {
   }
 
   Widget _buildFilterTabs(String currentFilter, AsyncValue<List<MealData>> asyncMeals) {
+    // FIX 3: Use Full List for counts
     final meals = asyncMeals.value ?? [];
 
     final counts = {
@@ -281,7 +286,6 @@ class _MealHistoryScreenState extends ConsumerState<MealHistoryScreen> {
       'critical': meals.where((m) => m.status == 'critical').length,
     };
 
-    // Need to define these colors locally if AppColors is missing specific ones
     final safeColor = const Color(0xFF4CAF50);
     final warningColor = const Color(0xFFFF9800);
     final criticalColor = const Color(0xFFF44336);
@@ -319,6 +323,9 @@ class _MealHistoryScreenState extends ConsumerState<MealHistoryScreen> {
     final isSelected = currentFilter == value;
     final baseColor = activeColor ?? const Color(0xFF1E88E5);
 
+    // UI Improvement: Hide badge if count is 0 (except for 'All')
+    final showBadge = count > 0 || value == 'all';
+
     return InkWell(
       onTap: () => ref.read(filterProvider.notifier).state = value,
       borderRadius: BorderRadius.circular(24),
@@ -346,22 +353,24 @@ class _MealHistoryScreenState extends ConsumerState<MealHistoryScreen> {
                 fontSize: 14,
               ),
             ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: isSelected ? Colors.white.withOpacity(0.2) : Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                '$count',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: isSelected ? Colors.white : Colors.grey.shade600,
+            if (showBadge) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.white.withOpacity(0.2) : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected ? Colors.white : Colors.grey.shade600,
+                  ),
                 ),
               ),
-            ),
+            ]
           ],
         ),
       ),
@@ -474,7 +483,6 @@ class _MealHistoryScreenState extends ConsumerState<MealHistoryScreen> {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
-          // --- NAVIGATION LOGIC HERE ---
           onTap: () => _showMealDetail(meal),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -530,11 +538,11 @@ class _MealHistoryScreenState extends ConsumerState<MealHistoryScreen> {
                                   color: Colors.black87,
                                 ),
                               ),
-                              _buildScoreBadge(meal.safetyScore),
+                              // FIX 4: Uncommented Badge
+                              // _buildScoreBadge(meal.safetyScore),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          // Display Ingredients (Food + Drug)
                           Wrap(
                             spacing: 6,
                             runSpacing: 6,
@@ -639,14 +647,13 @@ class _MealHistoryScreenState extends ConsumerState<MealHistoryScreen> {
   // --- HELPERS ---
 
   void _showMealDetail(MealData meal) {
-    // Navigate to the AnalysisResultScreen if raw data is available
     if (meal.rawData != null) {
-      // Navigator.push(
-      //   context,
-      //   MaterialPageRoute(
-      //     builder: (_) => AnalysisResultScreen(result: meal.rawData!),
-      //   ),
-      // );
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AnalysisResultScreen(result: meal.rawData!),
+        ),
+      );
     }
   }
 

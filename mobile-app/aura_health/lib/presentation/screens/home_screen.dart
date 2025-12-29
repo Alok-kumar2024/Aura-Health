@@ -1,5 +1,7 @@
+import 'package:aura_heallth/presentation/screens/Insights_screen.dart';
 import 'package:aura_heallth/presentation/screens/camera_screen.dart';
 import 'package:aura_heallth/presentation/screens/meal_history_screen.dart';
+import 'package:aura_heallth/presentation/screens/profile_screen.dart';
 import 'package:aura_heallth/state/home_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -48,8 +50,8 @@ class HomeScreen extends ConsumerWidget {
             child: switch (currentNav) {
               BottomNavigator.HOME => const HomeContent(key: ValueKey('Home')),
               BottomNavigator.HISTORY => const MealHistoryScreen(key: ValueKey('History')),
-              BottomNavigator.INSIGHT => const Center(child: Text("Insights Page")),
-              BottomNavigator.PROFILE => const Center(child: Text("Profile Page")),
+              BottomNavigator.INSIGHT => const InsightsScreen(key: ValueKey('Insights'),),
+              BottomNavigator.PROFILE => const ProfileScreen(key: ValueKey('Profile'),),
             },
           ),
         ),
