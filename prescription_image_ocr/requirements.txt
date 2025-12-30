@@ -1,15 +1,8 @@
 fastapi
 uvicorn
-
 pytesseract
 pillow
-opencv-python
-
+opencv-python-headless
 rapidfuzz
-
 neo4j
-
 python-multipart
-
-python-dotenv
-#apt-get update && apt-get install -y tesseract-ocr && pip install -r requirements.txt
