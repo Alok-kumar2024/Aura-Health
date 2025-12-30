@@ -6,12 +6,16 @@ import 'package:aura_heallth/state/home_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../state/profile_provider.dart';
+import '../widgets/user_avatar.dart';
+
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentNav = ref.watch(bottomProvider);
+
 
     return PopScope(
       canPop: currentNav == BottomNavigator.HOME,
@@ -252,11 +256,14 @@ class HomeScreen extends ConsumerWidget {
 // SUB-WIDGETS
 // ---------------------------------------------------------------------------
 
-class HomeContent extends StatelessWidget {
+class HomeContent extends ConsumerWidget {
   const HomeContent({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context,WidgetRef ref) {
+
+    final profile = ref.watch(profileProvider);
+
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
@@ -321,42 +328,31 @@ class HomeContent extends StatelessWidget {
   }
 }
 
-class HomeHeader extends StatelessWidget {
+class HomeHeader extends ConsumerWidget {
   const HomeHeader({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context,WidgetRef ref) {
+
+    final profile = ref.watch(profileProvider);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
       child: Row(
         children: [
-          Container(
-            height: 50,
-            width: 50,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade200,
-              shape: BoxShape.circle,
-              image: const DecorationImage(
-                image: NetworkImage("https://i.pravatar.cc/150?u=sarah"),
-                fit: BoxFit.cover,
-              ),
-              border: Border.all(color: Colors.white, width: 2),
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4))
-              ],
-            ),
-            // child: const Icon(Icons.person, color: Colors.grey),
+          UserAvatar(
+            imagePath: profile.imagePath,
+            name: profile.name,
+            radius: 28,
+            fontSize: 22,
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  "Hello, Sarah 👋",
+                Text(
+                  "Hello, ${profile.name}  👋",
                   style: TextStyle(
                     color: Colors.black87,
                     fontSize: 20,

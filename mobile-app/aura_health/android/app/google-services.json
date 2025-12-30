@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "450852349768",
+    "project_id": "aurahealth-4bddd",
+    "storage_bucket": "aurahealth-4bddd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:450852349768:android:0350191be205a7f207b57d",
+        "android_client_info": {
+          "package_name": "com.example.aura_heallth"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCoxM2iRxS7FTQaUMR9OOS3aaY2N9QtUxg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

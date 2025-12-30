@@ -1,4 +1,6 @@
-import 'package:aura_heallth/presentation/screens/settings_screen.dart'; // Import settings
+import 'package:aura_heallth/presentation/screens/settings_screen.dart';
+import 'package:aura_heallth/presentation/widgets/user_avatar.dart';
+import 'package:aura_heallth/state/profile_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,6 +9,9 @@ class ProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Watch the Hive Data source
+    final profile = ref.watch(profileProvider);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
@@ -18,7 +23,6 @@ class ProfileScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          // The Gear Icon is the ONLY entry point for App Settings now
           IconButton(
             onPressed: () {
               Navigator.push(
@@ -27,7 +31,7 @@ class ProfileScreen extends ConsumerWidget {
               );
             },
             icon: const Icon(Icons.settings_outlined, color: Colors.black87),
-          )
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -36,26 +40,55 @@ class ProfileScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. IDENTITY HEADER
-            const ProfileHeader(),
+            // 1. IDENTITY HEADER (With Smart Avatar)
+            ProfileHeader(
+              name: profile.name,
+              email: profile.email,
+              bloodGroup: profile.bloodGroup,
+              imagePath: profile.imagePath,
+              onEditTap: () {
+                // Navigate to Settings or Edit Screen
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                );
+              },
+            ),
 
             const SizedBox(height: 24),
 
-            // 2. VITALS ROW (New! Replaces the duplicate settings)
-            // This makes the profile useful for doctors.
-            const Row(
+            // 2. VITALS ROW
+            Row(
               children: [
-                Expanded(child: VitalsCard(label: "Age", value: "24", unit: "yrs")),
-                SizedBox(width: 12),
-                Expanded(child: VitalsCard(label: "Weight", value: "62", unit: "kg")),
-                SizedBox(width: 12),
-                Expanded(child: VitalsCard(label: "Height", value: "175", unit: "cm")),
+                Expanded(
+                  child: VitalsCard(
+                    label: "Age",
+                    value: profile.age.isNotEmpty ? profile.age : "--",
+                    unit: "yrs",
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: VitalsCard(
+                    label: "Weight",
+                    value: profile.weight.isNotEmpty ? profile.weight : "--",
+                    unit: "kg",
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: VitalsCard(
+                    label: "Height",
+                    value: profile.height.isNotEmpty ? profile.height : "--",
+                    unit: "cm",
+                  ),
+                ),
               ],
             ),
 
             const SizedBox(height: 32),
 
-            // 3. PRESCRIPTION VAULT
+            // 3. MEDICAL RECORDS
             const SectionTitle(title: "Medical Records"),
             const SizedBox(height: 16),
             const PrescriptionVault(),
@@ -75,7 +108,143 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
-// --- NEW WIDGET: VITALS CARD ---
+// --- WIDGETS ---
+
+class ProfileHeader extends StatelessWidget {
+  final String name;
+  final String email;
+  final String bloodGroup;
+  final String? imagePath;
+  final VoidCallback onEditTap;
+
+  const ProfileHeader({
+    super.key,
+    required this.name,
+    required this.email,
+    required this.bloodGroup,
+    required this.imagePath,
+    required this.onEditTap,
+  });
+
+  // Helper to get initials (e.g. "John Doe" -> "JD")
+  // String getInitials(String name) {
+  //   if (name.isEmpty) return "U";
+  //   List<String> nameParts = name.trim().split(" ");
+  //   if (nameParts.length > 1) {
+  //     return "${nameParts[0][0]}${nameParts[1][0]}".toUpperCase();
+  //   }
+  //   return nameParts[0][0].toUpperCase();
+  // }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // SMART AVATAR
+          Stack(
+            children: [
+              UserAvatar(
+                imagePath: imagePath,
+                name: name,
+                radius: 35,
+                fontSize: 22,
+              ),
+              // CircleAvatar(
+              //   radius: 35,
+              //   backgroundColor: const Color(0xFFE3F2FD),
+              //   child: Text(
+              //     getInitials(name),
+              //     style: const TextStyle(
+              //         fontSize: 24,
+              //         fontWeight: FontWeight.bold,
+              //         color: Color(0xFF1E88E5)
+              //     ),
+              //   ),
+              // ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: onEditTap,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E88E5),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.edit,
+                      size: 12,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 20),
+
+          // TEXT DETAILS
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name.isNotEmpty ? name : "Guest User",
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  email.isNotEmpty ? email : "No Email",
+                  style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F8E9), // Light Green bg
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    "Blood Group: $bloodGroup",
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF2E7D32),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class VitalsCard extends StatelessWidget {
   final String label;
   final String value;
@@ -91,94 +260,61 @@ class VitalsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 2)),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
         children: [
           Text(
             value,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1E88E5)),
+            style: const TextStyle(
+              fontSize: 20, // Slightly adjusted for fit
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1E88E5),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
-          RichText(
-            text: TextSpan(
-              text: label,
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-              children: [
-                TextSpan(text: " ($unit)", style: TextStyle(color: Colors.grey.shade400, fontSize: 10)),
-              ],
-            ),
+          Text(
+            "$label ($unit)",
+            style: TextStyle(color: Colors.grey.shade500, fontSize: 11),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
     );
   }
 }
-
-// --- KEEP THESE WIDGETS FROM PREVIOUS CODE ---
-// (Copy ProfileHeader, PrescriptionVault, HospitalConnectCard, SectionTitle exactly as they were)
-// I will reprint them below for easy copy-pasting if you need them.
 
 class SectionTitle extends StatelessWidget {
   final String title;
-  const SectionTitle({super.key, required this.title});
-  @override
-  Widget build(BuildContext context) {
-    return Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87));
-  }
-}
 
-class ProfileHeader extends StatelessWidget {
-  const ProfileHeader({super.key});
+  const SectionTitle({super.key, required this.title});
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 20, offset: const Offset(0, 10))],
-      ),
-      child: Row(
-        children: [
-          Stack(
-            children: [
-              const CircleAvatar(radius: 35, backgroundImage: NetworkImage("https://i.pravatar.cc/150?u=sarah")),
-              Positioned(
-                bottom: 0, right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(color: const Color(0xFF1E88E5), shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)),
-                  child: const Icon(Icons.edit, size: 12, color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 20),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Sarah Johnson", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                SizedBox(height: 4),
-                Text("ID: #8839201", style: TextStyle(fontSize: 14, color: Colors.grey)),
-                SizedBox(height: 4),
-                Text("Blood Group: O+", style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w600)),
-              ],
-            ),
-          ),
-        ],
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: Colors.black87,
       ),
     );
   }
 }
 
+// --- PRESCRIPTION & HOSPITAL CARDS (No Changes needed, keep them as they are) ---
 class PrescriptionVault extends StatelessWidget {
   const PrescriptionVault({super.key});
 
@@ -190,48 +326,44 @@ class PrescriptionVault extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         children: [
-          // ACTION 1: Upload File (Camera/Gallery)
           _buildActionButton(
             context,
             label: "Upload\nFile",
             icon: Icons.upload_file_rounded,
-            onTap: () {
-              // Trigger Image Picker
-            },
+            onTap: () {},
           ),
-
-          // ACTION 2: Manual Entry (Type Name)
           _buildActionButton(
             context,
             label: "Add\nManually",
             icon: Icons.edit_note_rounded,
-            onTap: () => _showAddManualDialog(context),
+            onTap: () {},
           ),
-
-          // Existing Items
           _buildPrescriptionItem("Feb 12", "Dr. Smith"),
           _buildPrescriptionItem("Jan 28", "Dermatology"),
-          _buildPrescriptionItem("Dec 15", "Cardio Lab"),
         ],
       ),
     );
   }
 
-  // --- Helper for the Dashed Action Buttons ---
-  Widget _buildActionButton(BuildContext context, {required String label, required IconData icon, required VoidCallback onTap}) {
+  Widget _buildActionButton(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Container(
-        width: 100, // Slightly smaller to fit both
+        width: 100,
         margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFFE3F2FD), // Light Blue
+          color: const Color(0xFFE3F2FD),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: const Color(0xFF1E88E5).withOpacity(0.5),
             width: 1.5,
-            style: BorderStyle.solid, // Dashed border indicates "Add New"
+            style: BorderStyle.solid,
           ),
         ),
         child: Column(
@@ -254,7 +386,6 @@ class PrescriptionVault extends StatelessWidget {
     );
   }
 
-  // --- Helper for Existing Items (Same as before) ---
   Widget _buildPrescriptionItem(String date, String doc) {
     return Container(
       width: 110,
@@ -275,7 +406,11 @@ class PrescriptionVault extends StatelessWidget {
               color: Colors.orange.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.description_outlined, color: Colors.orange, size: 20),
+            child: const Icon(
+              Icons.description_outlined,
+              color: Colors.orange,
+              size: 20,
+            ),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -284,62 +419,16 @@ class PrescriptionVault extends StatelessWidget {
                 doc,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
               ),
               Text(
                 date,
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ],
-          )
-        ],
-      ),
-    );
-  }
-
-  // --- POPUP DIALOG FOR MANUAL ENTRY ---
-  void _showAddManualDialog(BuildContext context) {
-    final TextEditingController nameController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Add Prescription"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: InputDecoration(
-                labelText: "Medicine/Prescription Name",
-                hintText: "e.g., Metformin 500mg",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              decoration: InputDecoration(
-                labelText: "Doctor's Name (Optional)",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              // TODO: Add Logic to save to list
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1E88E5),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text("Save", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -349,21 +438,76 @@ class PrescriptionVault extends StatelessWidget {
 
 class HospitalConnectCard extends StatelessWidget {
   const HospitalConnectCard({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF2E7D32), Color(0xFF66BB6A)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF2E7D32), Color(0xFF66BB6A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: const Color(0xFF2E7D32).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))],
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2E7D32).withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle), child: const Icon(Icons.local_hospital_rounded, color: Colors.white, size: 28)),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.local_hospital_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
           const SizedBox(width: 16),
-          const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text("Hospital Connect", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)), SizedBox(height: 4), Text("Sync with Apollo Hospitals", style: TextStyle(color: Colors.white70, fontSize: 13))])),
-          Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: const Text("Connect", style: TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 12))),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Hospital Connect",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  "Sync with Apollo Hospitals",
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              "Connect",
+              style: TextStyle(
+                color: Color(0xFF2E7D32),
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ),
         ],
       ),
     );
