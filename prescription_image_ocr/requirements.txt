@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pytesseract
+pillow
+opencv-python-headless
+rapidfuzz
+neo4j
+python-multipart
+python-dotenv
