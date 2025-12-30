@@ -66,7 +66,7 @@ app.post("/getInteractions", async (req, res) => {
 app.get("/history" ,async (req ,res) => {
 
   try {
-    const { uid } = req.body; 
+    const { uid } = req.query; 
     const userDocs = await interactions.find({ uid }).sort({ _id: -1 });
 
     if (!userDocs || userDocs.length === 0) {
@@ -88,8 +88,8 @@ app.get("/history" ,async (req ,res) => {
 const port = process.env.PORT || 4000;
 main().
 then(async ()=>{
-    app.listen(port , ()=>{
-        console.log("listening at port 4000");
+    app.listen(port ,'0.0.0.0', ()=>{
+        console.log(`listening at port ${port}`);
     })
 })
 .catch(err => console.log(err));
