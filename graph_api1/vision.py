@@ -3,7 +3,7 @@ import io
 from PIL import Image
 
 # Load model once on startup
-model = YOLO('best(1).pt') 
+model = YOLO('./graph_api1/best(1).pt') 
 
 def detect_food(image_bytes):
     img = Image.open(io.BytesIO(image_bytes))
