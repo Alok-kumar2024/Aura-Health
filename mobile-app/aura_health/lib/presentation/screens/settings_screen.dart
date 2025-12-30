@@ -504,9 +504,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       content: "You will be returned to the login screen. Your local health records will be kept safe.",
       actionText: "Sign Out",
       onConfirm: () async {
+        // 1. Wipe local Hive/Storage data FIRST
+        await LocalStorageService().clearAll();
+
+        // 2. Then trigger the Firebase logout through the provider
         await ref.read(authProvider.notifier).logout();
+
         if (mounted) {
-          Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const LoginScreen()), (r) => false);
+          // 3. Clear the navigation stack and go to Login
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (r) => false,
+          );
         }
       },
     );

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/legacy.dart';
 enum BottomNavigator { HOME, HISTORY, INSIGHT, PROFILE }
 
 class BottomProvider extends Notifier<BottomNavigator> {
+
   @override
   BottomNavigator build() {
     // TODO: implement build

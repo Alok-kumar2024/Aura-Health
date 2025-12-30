@@ -58,15 +58,19 @@ class MealDetailScreen extends StatelessWidget {
               title: "Medication vs. Food",
               child: Row(
                 children: [
-                  _buildTag(
-                    meal.rawData?.drug ?? "Unknown",
-                    Colors.blue.shade700,
+                  Expanded(
+                    child: _buildTag(
+                      meal.rawData?.drug ?? "Unknown",
+                      Colors.blue.shade700,
+                    ),
                   ),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 8.0),
                     child: Icon(Icons.compare_arrows, color: Colors.grey),
                   ),
-                  _buildTag(meal.mealName, Colors.orange.shade700),
+                  Expanded(
+                    child: _buildTag(meal.mealName, Colors.orange.shade700),
+                  ),
                 ],
               ),
             ),

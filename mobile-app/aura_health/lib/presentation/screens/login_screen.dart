@@ -1,8 +1,10 @@
+import 'package:aura_heallth/presentation/screens/personal_details_screen.dart';
 import 'package:aura_heallth/presentation/screens/sign_up_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../service/local_storage_service.dart';
 import '../../state/auth_provider.dart';
 import 'home_screen.dart';
 
@@ -26,27 +28,53 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authState = ref.read(authProvider);
       if (authState.hasError) {
-        ref.read(authProvider.notifier).state = AsyncValue.data(null);
+        ref.read(authProvider.notifier).state = const AsyncValue.data(null);
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
 
-    // Listen for auth state changes in build method
+    // Listen for auth state changes to navigate or show errors
     if (!_isHandlingAuth && authState.isLoading) {
       _isHandlingAuth = true;
     } else if (_isHandlingAuth && !authState.isLoading) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      // ADD 'async' HERE to allow 'await' inside the callback
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
         _isHandlingAuth = false;
+
         if (authState.hasError) {
-          _showCustomSnackBar(context, authState.error.toString(), isError: true);
+          _showCustomSnackBar(
+            context,
+            authState.error.toString(),
+            isError: true,
+          );
         } else if (authState.value != null) {
+          // 1. Pull data from Firebase into Hive
+          await LocalStorageService().restoreFromCloud();
+
+          if (!mounted) return;
+
+          // 2. Check the now-populated local state from Hive
+          final bool isComplete = LocalStorageService().hasCompletedOnboarding();
+
+          // 3. Navigate based on the Firebase-synced status
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
+            MaterialPageRoute(
+              builder: (_) => isComplete
+                  ? const HomeScreen()
+                  : const PersonalDetailsScreen(),
+            ),
           );
         }
       });
@@ -56,7 +84,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark,
-        statusBarBrightness: Brightness.light,
       ),
       child: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
@@ -71,7 +98,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // LOGO WITH SHADOW
+                    // LOGO SECTION
                     Center(
                       child: Container(
                         padding: const EdgeInsets.all(20),
@@ -93,10 +120,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 32),
-
-                    // WELCOME TEXT
                     const Text(
                       "Welcome Back!",
                       textAlign: TextAlign.center,
@@ -104,16 +128,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
                         color: Colors.black87,
-                        letterSpacing: -0.5,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      "Sign in to access your health dashboard.",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.grey, height: 1.5),
-                    ),
-
                     const SizedBox(height: 40),
 
                     // INPUT FIELDS
@@ -135,82 +151,51 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () {},
-                        style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFF1E88E5),
-                        ),
+                        onPressed: () => _showPasswordResetDialog(context),
                         child: const Text(
                           "Forgot Password?",
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: Color(0xFF1E88E5),
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 20),
 
-                    // MAIN BUTTON
+                    // LOGIN BUTTON
                     SizedBox(
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: authState.isLoading ? null : () => _handleLogin(),
+                        onPressed: authState.isLoading ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1E88E5),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          elevation: 4,
-                          shadowColor: const Color(0xFF1E88E5).withOpacity(0.4),
                         ),
                         child: authState.isLoading
                             ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2.5,
-                          ),
-                        )
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
                             : const Text(
-                          "Sign In",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                                "Sign In",
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
                       ),
                     ),
-
-                    const SizedBox(height: 32),
-
-                    // DIVIDER
-                    const Row(
-                      children: [
-                        Expanded(child: Divider(color: Color(0xFFEEEEEE))),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            "Or continue with",
-                            style: TextStyle(color: Colors.grey, fontSize: 13),
-                          ),
-                        ),
-                        Expanded(child: Divider(color: Color(0xFFEEEEEE))),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // SOCIAL BUTTONS
-                    // _buildSocialButton(
-                    //   label: "Continue with Google",
-                    //   icon: Icons.g_mobiledata_rounded,
-                    //   onTap: () {
-                    //     // Trigger Google Sign In
-                    //   },
-                    // ),
-
                     const SizedBox(height: 40),
 
-                    // SIGN UP LINK
+                    // SIGN UP NAVIGATION
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -219,12 +204,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           style: TextStyle(color: Colors.grey),
                         ),
                         GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const SignUpScreen()),
-                            );
-                          },
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const SignUpScreen(),
+                            ),
+                          ),
                           child: const Text(
                             "Sign Up",
                             style: TextStyle(
@@ -235,7 +220,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
                   ],
                 ),
               ),
@@ -247,47 +231,127 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   // --- LOGIC ---
-  Future<void> _handleLogin() async {
-    FocusScope.of(context).unfocus();
 
+  Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
     if (email.isEmpty || !email.contains('@')) {
-      _showCustomSnackBar(context, "Please enter a valid email address", isError: true);
+      _showCustomSnackBar(
+        context,
+        "Please enter a valid email address",
+        isError: true,
+      );
       return;
     }
-
     if (password.isEmpty) {
       _showCustomSnackBar(context, "Please enter your password", isError: true);
       return;
     }
-
-    try {
-      await ref.read(authProvider.notifier).login(email, password);
-    } catch (e) {
-      // Error will be shown through the auth state listener
-    }
+    await ref.read(authProvider.notifier).login(email, password);
   }
 
-  void _showCustomSnackBar(BuildContext context, String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).removeCurrentSnackBar();
+  void _showPasswordResetDialog(BuildContext context) {
+    final email = _emailController.text.trim();
+
+    if (email.isEmpty || !email.contains('@')) {
+      _showCustomSnackBar(
+        context,
+        "Enter your email address in the field above first",
+        isError: true,
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          bool isResetting = false;
+
+          return AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.alternate_email_rounded,
+                  color: Color(0xFF1E88E5),
+                  size: 48,
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  "Reset Password",
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  "We will send a secure password reset link to $email.",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.grey, fontSize: 14),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text("Cancel"),
+              ),
+              ElevatedButton(
+                onPressed: isResetting
+                    ? null
+                    : () async {
+                        setDialogState(() => isResetting = true);
+                        try {
+                          await ref
+                              .read(authProvider.notifier)
+                              .resetPassword();
+                          if (context.mounted) {
+                            Navigator.pop(ctx);
+                            _showCustomSnackBar(
+                              context,
+                              "Reset link sent! Check your email.",
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted)
+                            _showCustomSnackBar(
+                              context,
+                              e.toString(),
+                              isError: true,
+                            );
+                        } finally {
+                          setDialogState(() => isResetting = false);
+                        }
+                      },
+                child: isResetting
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text("Send Link"),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showCustomSnackBar(
+    BuildContext context,
+    String message, {
+    bool isError = false,
+  }) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              isError ? Icons.error_outline : Icons.check_circle_outline,
-              color: Colors.white,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
+        content: Text(
+          message,
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         backgroundColor: isError ? Colors.red.shade400 : Colors.green.shade400,
         behavior: SnackBarBehavior.floating,
@@ -297,7 +361,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  // --- WIDGET HELPERS ---
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
@@ -305,79 +368,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     bool isPassword = false,
     TextInputType? inputType,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8F9FA),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: TextField(
-        controller: controller,
-        obscureText: isPassword && _obscurePassword,
-        keyboardType: inputType,
-        style: const TextStyle(fontWeight: FontWeight.w500),
-        decoration: InputDecoration(
-          contentPadding: const EdgeInsets.symmetric(vertical: 16),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Colors.transparent),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xFF1E88E5), width: 1.5),
-          ),
-          filled: true,
-          fillColor: const Color(0xFFF8F9FA),
-          prefixIcon: Icon(icon, color: Colors.grey.shade500, size: 22),
-          labelText: label,
-          labelStyle: TextStyle(color: Colors.grey.shade500),
-          suffixIcon: isPassword
-              ? IconButton(
-            icon: Icon(
-              _obscurePassword ? Icons.visibility_off : Icons.visibility,
-              color: Colors.grey.shade400,
-              size: 20,
-            ),
-            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-          )
-              : null,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSocialButton({
-    required String label,
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        height: 56,
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
+    return TextField(
+      controller: controller,
+      obscureText: isPassword && _obscurePassword,
+      keyboardType: inputType,
+      decoration: InputDecoration(
+        prefixIcon: Icon(icon, color: Colors.grey),
+        labelText: label,
+        filled: true,
+        fillColor: const Color(0xFFF8F9FA),
+        border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 24, color: Colors.black87),
-            const SizedBox(width: 12),
-            Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
+        suffixIcon: isPassword
+            ? IconButton(
+                icon: Icon(
+                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                ),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
+              )
+            : null,
       ),
     );
   }
