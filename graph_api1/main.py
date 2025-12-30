@@ -1,9 +1,9 @@
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from typing import Optional, List
-from graph_api.db import find_interactions,drug_exists
-from graph_api.ai_explainer import explain
+from graph_api1.db import find_interactions,drug_exists
+from graph_api1.ai_explainer import explain
 
-from vision import detect_food
+from graph_api1.vision import detect_food
 
 app = FastAPI(title="AuraHealth")
 
