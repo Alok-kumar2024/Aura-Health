@@ -1,3 +1,5 @@
 .env
 .myenv/
 node_modules
+graph_api1/*.pt
+graph_api1/_*
