@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from graph_api.db import find_interactions
+from graph_api.db import find_interactions,drug_exists
 from graph_api.ai_explainer import explain
 
 
