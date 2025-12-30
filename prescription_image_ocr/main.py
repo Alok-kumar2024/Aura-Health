@@ -2,8 +2,8 @@ from fastapi import FastAPI, UploadFile, File
 from PIL import Image
 import io
 
-from prescription_image_ocr.ocr_utils import extract_text_from_image, detect_drugs_from_text
-from prescription_image_ocr.db import get_all_drug_names
+from ocr_utils import extract_text_from_image, detect_drugs_from_text
+from db import get_all_drug_names
 
 
 app = FastAPI(title="AuraHealth OCR API")
