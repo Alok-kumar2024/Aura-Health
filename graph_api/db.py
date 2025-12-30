@@ -25,3 +25,11 @@ def find_interactions(drug: str, food: str):
     with driver.session() as session:
         results = session.run(query, drug=drug, food=food)
         return [record.data() for record in results]
+def drug_exists(drug: str) -> bool:
+    query = """
+    MATCH (d:Drug)
+    WHERE toLower(d.name) = toLower($drug)
+    RETURN d LIMIT 1
+    """
+    with driver.session() as session:
+        return session.run(query, drug=drug).single() is not None
