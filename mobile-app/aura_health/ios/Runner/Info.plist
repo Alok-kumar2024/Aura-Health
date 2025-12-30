@@ -51,5 +51,8 @@
     <key>NSMicrophoneUsageDescription</key>
     <string>your usage description here</string>
 
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>We use speech recognition to convert your meal descriptions into text.</string>
+
 </dict>
 </plist>

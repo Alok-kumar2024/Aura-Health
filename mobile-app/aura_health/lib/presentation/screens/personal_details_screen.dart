@@ -374,18 +374,16 @@ class _PersonalDetailsScreenState extends ConsumerState<PersonalDetailsScreen> {
         _ageController.text.isEmpty ||
         _weightController.text.isEmpty ||
         _heightController.text.isEmpty) {
-      _showCustomSnackBar(
-        context,
-        "Please fill in all required fields",
-        isError: true,
-      );
+      _showCustomSnackBar(context, "Please fill in all required fields", isError: true);
       return;
     }
 
-    setState(() => _isLoading = true); // Start Loading
+    setState(() => _isLoading = true);
 
     try {
       final storage = LocalStorageService();
+
+      // 1. This now updates Hive AND Firestore (via the new LocalStorageService code)
       await storage.saveVitals(
         gender: _selectedGender,
         age: _ageController.text.trim(),
@@ -393,16 +391,15 @@ class _PersonalDetailsScreenState extends ConsumerState<PersonalDetailsScreen> {
         height: _heightController.text.trim(),
         bloodGroup: _selectedBloodGroup,
       );
+
       await storage.updateName(_nameController.text.trim());
 
       if (_profileImage != null) {
         await storage.saveProfileImage(_profileImage!.path);
       }
 
-      // Simulate slight delay for better UX (optional)
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      ref.read(profileProvider.notifier).refresh();
+      // 2. Trigger a Cloud Sync to ensure Notifier state is fresh
+      await ref.read(profileProvider.notifier).syncFromCloud();
 
       if (mounted) {
         if (isEditMode) {
@@ -412,22 +409,16 @@ class _PersonalDetailsScreenState extends ConsumerState<PersonalDetailsScreen> {
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (_) => const HomeScreen()),
-            (route) => false,
+                (route) => false,
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        _showCustomSnackBar(
-          context,
-          "Error saving data. Please try again.",
-          isError: true,
-        );
+        _showCustomSnackBar(context, "Error saving data. Please try again.", isError: true);
       }
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false); // Stop Loading
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

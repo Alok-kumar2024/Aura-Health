@@ -200,13 +200,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 24),
 
                     // SOCIAL BUTTONS
-                    _buildSocialButton(
-                      label: "Continue with Google",
-                      icon: Icons.g_mobiledata_rounded,
-                      onTap: () {
-                        // Trigger Google Sign In
-                      },
-                    ),
+                    // _buildSocialButton(
+                    //   label: "Continue with Google",
+                    //   icon: Icons.g_mobiledata_rounded,
+                    //   onTap: () {
+                    //     // Trigger Google Sign In
+                    //   },
+                    // ),
 
                     const SizedBox(height: 40),
 

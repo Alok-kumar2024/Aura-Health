@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../service/local_storage_service.dart';
+
 class AppUser {
   final String uid;
   final String name;
@@ -97,14 +99,38 @@ class AuthNotifier extends AsyncNotifier<AppUser?> {
     }
   }
 
+  Future<void> resetPassword() async {
+    // We get the current user's email from the state
+    final currentEmail = state.value?.email;
+
+    if (currentEmail == null) {
+      state = AsyncValue.error("No logged-in user found.", StackTrace.current);
+      return;
+    }
+
+    try {
+      // Firebase sends the email automatically
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: currentEmail);
+    } catch (e, stack) {
+      state = AsyncValue.error("Failed to send reset email: ${e.toString()}", stack);
+      rethrow; // Rethrow so the UI can catch it
+    }
+  }
+
+
+
   Future<void> logout() async {
     state = const AsyncValue.loading();
     try {
+      // 1. Wipe local Hive data
+      await LocalStorageService().clearAll();
+
+      // 2. Sign out from Firebase
       await FirebaseAuth.instance.signOut();
+
       state = const AsyncValue.data(null);
     } catch (e, stack) {
       state = AsyncValue.error(e.toString(), stack);
-      rethrow;
     }
   }
 }

@@ -1,5 +1,7 @@
 import 'package:uuid/uuid.dart';
 
+import 'package:uuid/uuid.dart';
+
 class InteractionResponse {
   final String drug;
   final String food;
@@ -12,13 +14,19 @@ class InteractionResponse {
   });
 
   factory InteractionResponse.fromJson(Map<String, dynamic> json) {
+    // FIX: Navigating the nested 'result' -> 'interactions' path from your log
+    List<InteractionDetail> extractedInteractions = [];
+
+    if (json['result'] != null && json['result']['interactions'] != null) {
+      extractedInteractions = (json['result']['interactions'] as List)
+          .map((i) => InteractionDetail.fromJson(i))
+          .toList();
+    }
+
     return InteractionResponse(
       drug: json['drug'] ?? 'Unknown Drug',
       food: json['food'] ?? 'Unknown Food',
-      interactions: (json['interactions'] as List?)
-          ?.map((i) => InteractionDetail.fromJson(i))
-          .toList() ??
-          [],
+      interactions: extractedInteractions,
     );
   }
 
@@ -30,7 +38,7 @@ class InteractionResponse {
 }
 
 class InteractionDetail {
-  final String relation; // "NEGATIVE_INTERACTION", etc.
+  final String relation;
   final String reason;
   final String alternatives;
   final String aiExplanation;
@@ -59,64 +67,61 @@ class InteractionDetail {
   };
 }
 
-// --- 2. UI MODEL (What the History Screen displays) ---
 class MealData {
   final String id;
-  final String mealName;      // Will hold the 'Food' name
-  final DateTime timestamp;   // Generated locally
-  // final int safetyScore;      // Calculated based on interaction
-  final String status;        // 'safe', 'warning', 'critical'
-  final List<String> ingredients; // Will hold [Food, Drug]
+  final String mealName;
+  final DateTime timestamp;
+  final String status;
+  final List<String> ingredients;
   final int interactionCount;
-
-  // Store the raw backend response in case we need details screen later
   final InteractionResponse? rawData;
 
   MealData({
     required this.id,
     required this.mealName,
     required this.timestamp,
-    // required this.safetyScore,
     required this.status,
     required this.ingredients,
     required this.interactionCount,
     this.rawData,
   });
 
-  // --- THE BRIDGE: Converts API Data to UI Data ---
   factory MealData.fromInteraction(InteractionResponse response) {
+    // Handle empty list case to prevent crashes
+    if (response.interactions.isEmpty) {
+      return MealData(
+        id: const Uuid().v4(),
+        mealName: response.food,
+        timestamp: DateTime.now(),
+        status: 'safe',
+        ingredients: [response.food, response.drug],
+        interactionCount: 0,
+        rawData: response,
+      );
+    }
 
-    final hasNegative = response.interactions.any((i) =>
-    i.relation == "NEGATIVE_INTERACTION");
-
+    final hasNegative = response.interactions.any((i) => i.relation == "NEGATIVE_INTERACTION");
     final hasWarning = response.interactions.any((i) =>
     i.relation != "NEGATIVE_INTERACTION" &&
         i.relation != "SAFE" &&
-        i.relation != "POSITIVE_INTERACTION"
-    );
+        i.relation != "POSITIVE_INTERACTION");
 
-    final count = response.interactions.where((i){
-      return i.relation != "SAFE" &&
-          i.relation != "POSITIVE_INTERACTION";
-    }).length;
+    final count = response.interactions.where((i) =>
+    i.relation != "SAFE" && i.relation != "POSITIVE_INTERACTION").length;
 
-    // 3. SET STATUS
-    String status = 'safe'; // Default (Green)
-
-
+    String status = 'safe';
     if (hasNegative) {
-      status = 'critical'; // Red
+      status = 'critical';
     } else if (hasWarning) {
-      status = 'warning';  // Orange
+      status = 'warning';
     }
 
     return MealData(
-      id: const Uuid().v4(), // Generate random ID
-      mealName: response.food, // The main title is the Food
-      timestamp: DateTime.now(), // Use current time
-      // safetyScore: score,
+      id: const Uuid().v4(),
+      mealName: response.food,
+      timestamp: DateTime.now(),
       status: status,
-      ingredients: [response.food, response.drug], // Display tags
+      ingredients: [response.food, response.drug],
       interactionCount: count,
       rawData: response,
     );

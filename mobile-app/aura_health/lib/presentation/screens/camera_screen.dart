@@ -266,15 +266,17 @@ class _CameraScreen extends ConsumerState<CameraScreen>
                       ),
                       onPressed: () => Navigator.pop(context),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.black45,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text(
-                        "Scan Food",
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.black45,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Text(
+                          "Snap a photo or tap the mic to log meals",
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 48), // Balance spacing

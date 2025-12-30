@@ -22,28 +22,32 @@ class _SplashScreenState extends State<SplashScreen> {
     _checkStatusAndNavigate();
   }
 
-  Future<void> _checkStatusAndNavigate() async {
-    // 1. Artificial Delay (Optional: Keeps logo visible for 2 seconds)
-    await Future.delayed(const Duration(seconds: 2));
+  // Update this specific method in splash_screen.dart
 
+  Future<void> _checkStatusAndNavigate() async {
+    await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
 
-    // 2. Check Authentication
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
-      // CASE A: No User -> Login Screen
       _navigateTo(const LoginScreen());
     } else {
-      // CASE B: User Logged In -> Check Onboarding Status
-      // We check Hive to see if they finished the Personal Details setup
-      final hasCompletedOnboarding = LocalStorageService().hasCompletedOnboarding();
+      final storage = LocalStorageService();
+      bool hasLocalData = storage.hasCompletedOnboarding();
 
-      if (hasCompletedOnboarding) {
-        // All Good -> Home
+      if (!hasLocalData) {
+        // 1. Try to restore from Cloud (New Phone/Reinstall)
+        await storage.restoreFromCloud();
+        // 2. Re-check if we found data after restoration
+        hasLocalData = storage.hasCompletedOnboarding();
+      }
+
+      if (hasLocalData) {
+        // 3. User is ready - Go Home
         _navigateTo(const HomeScreen());
       } else {
-        // Missing Info -> Personal Details
+        // 4. Truly new user - Go to Personal Details
         _navigateTo(const PersonalDetailsScreen());
       }
     }

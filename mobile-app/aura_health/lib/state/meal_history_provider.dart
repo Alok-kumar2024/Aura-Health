@@ -1,106 +1,62 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
 import '../model/meal_data.dart';
 
 final searchQueryProvider = StateProvider<String>((ref) => '');
 final filterProvider = StateProvider<String>((ref) => 'all');
 
 class MealNotifier extends AsyncNotifier<List<MealData>> {
-
   @override
-  FutureOr<List<MealData>> build() {
-    return _fetchMealsFromApi();
-  }
+  FutureOr<List<MealData>> build() => _fetchMealsFromApi();
 
   Future<List<MealData>> _fetchMealsFromApi() async {
-    // Replace with your actual Link
-    final url = Uri.parse('YOUR_API_LINK_HERE');
+    // 1. Get Real Authenticated UID
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return []; // No user, no history
+
+    final uid = user.uid;
+    // 2. Target the specific /history endpoint
+    final url = Uri.parse('https://aura-health-rmow.onrender.com/history?uid=$uid');
+
+    debugPrint("📥 [FETCH HISTORY] Requesting: $url");
 
     try {
-      // 1. Fetch Data
-      // final response = await http.get(url);
+      final response = await http.get(url).timeout(const Duration(seconds: 15));
 
-      // MOCKING THE RESPONSE FOR NOW (To match your JSON structure)
-      await Future.delayed(const Duration(seconds: 1)); // Simulate Network
-      final responseStatusCode = 200;
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> body = jsonDecode(response.body);
+        final List<dynamic> dataList = body['data'] ?? [];
 
-      // This mimics an API returning a LIST of your JSON objects
-      final String mockBody = jsonEncode([
-        {
-          "drug": "Lepirudin",
-          "food": "garlic",
-          "interactions": [
-            {
-              "relation": "NEGATIVE_INTERACTION",
-              "drug": "Lepirudin",
-              "food": "garlic",
-              "reason": "Garlic has antiplatelet and anticoagulant effects...",
-              "alternatives": "Use onion...",
-              "ai_explanation": "Limit garlic..."
-            }
-          ]
-        },
-        {
-          "drug": "Paracetamol",
-          "food": "Banana",
-          "interactions": []
+        List<MealData> allMeals = [];
+        for (var entry in dataList) {
+          final List<dynamic> interactions = entry['interactions'] ?? [];
+          for (var json in interactions) {
+            allMeals.add(MealData.fromInteraction(InteractionResponse.fromJson(json)));
+          }
         }
-      ]);
-
-      if (responseStatusCode == 200) {
-        final List<dynamic> data = jsonDecode(mockBody);
-
-        // 2. Convert: JSON -> InteractionResponse -> MealData
-        // This is where the magic happens
-        return data.map((json) {
-          final interaction = InteractionResponse.fromJson(json);
-          return MealData.fromInteraction(interaction);
-        }).toList();
-
-      } else {
-        throw Exception('Failed to load meals');
+        debugPrint("✅ [FETCH HISTORY] Loaded ${allMeals.length} records");
+        return allMeals;
       }
+      return [];
     } catch (e) {
-      print("Error fetching meals: $e");
+      debugPrint("⚠️ [FETCH HISTORY] Error: $e");
       return [];
     }
   }
 
-  // Add a meal (e.g., after taking a photo)
-  Future<void> addMeal(InteractionResponse interaction) async {
-    final previousState = state.value ?? [];
-
-    // Convert to UI model immediately
+  void addMeal(InteractionResponse interaction) {
     final newMeal = MealData.fromInteraction(interaction);
-
-    // Update UI Optimistically
-    state = AsyncData([newMeal, ...previousState]);
-
-    try {
-      // Send to Backend
-      /*
-      final response = await http.post(
-          Uri.parse("YOUR_POST_LINK"),
-          headers: {"Content-Type": "application/json"},
-          body: json.encode(interaction.toJson())
-      );
-      */
-    } catch (e) {
-      // Revert if failed
-      state = AsyncData(previousState);
-    }
+    state = AsyncData([newMeal, ...(state.value ?? [])]);
   }
 }
 
-final allMealsNotifier = AsyncNotifierProvider<MealNotifier, List<MealData>>(
-      () => MealNotifier(),
-);
+final allMealsNotifier = AsyncNotifierProvider<MealNotifier, List<MealData>>(MealNotifier.new);
 
-// Filter Logic
 final displayedMealsProvider = Provider<AsyncValue<List<MealData>>>((ref) {
   final mealsAsync = ref.watch(allMealsNotifier);
   final filter = ref.watch(filterProvider);
@@ -109,10 +65,7 @@ final displayedMealsProvider = Provider<AsyncValue<List<MealData>>>((ref) {
   return mealsAsync.whenData((meals) {
     return meals.where((meal) {
       final matchesCategory = filter == 'all' || meal.status == filter;
-      final matchesSearch = query.isEmpty ||
-          meal.mealName.toLowerCase().contains(query) ||
-          meal.ingredients.any((i) => i.toLowerCase().contains(query));
-
+      final matchesSearch = query.isEmpty || meal.mealName.toLowerCase().contains(query);
       return matchesCategory && matchesSearch;
     }).toList();
   });

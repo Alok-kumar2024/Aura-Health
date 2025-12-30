@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../service/interaction_service.dart';
 import '../../service/local_storage_service.dart';
+import '../../state/meal_history_provider.dart';
 import '../../state/profile_provider.dart';
 import 'login_screen.dart';
 
@@ -16,9 +18,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  bool _notificationsEnabled = true;
-  bool _biometricEnabled = false;
-  bool _darkMode = false;
+  bool _isResettingPassword = false;
 
   @override
   Widget build(BuildContext context) {
@@ -27,389 +27,583 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       appBar: AppBar(
         title: const Text(
           "Settings",
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w800),
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w900, fontSize: 24),
         ),
         centerTitle: true,
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        systemOverlayStyle: const SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.dark,
-        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         physics: const BouncingScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. ACCOUNT
-            _buildSectionHeader("Account"),
+            _buildSectionHeader("Account & Security"),
             _buildActionTile(
               icon: Icons.person_outline_rounded,
               title: "Edit Profile",
-              subtitle: "Name, Age, Weight, Blood Group",
+              subtitle: "Vitals, Identity & Avatar",
               onTap: () {
                 final currentProfile = ref.read(profileProvider);
-
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    // We pass 'existingProfile' to trigger Edit Mode
-                    builder: (_) => PersonalDetailsScreen(existingProfile: currentProfile),
-                  ),
-                );
-              }
-            ),
-            _buildActionTile(
-              icon: Icons.lock_outline_rounded,
-              title: "Change Password",
-              onTap: () {
-                // Trigger Password Reset Email
-                ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Password reset email sent"))
+                  MaterialPageRoute(builder: (_) => PersonalDetailsScreen(existingProfile: currentProfile)),
                 );
               },
             ),
-
-            const SizedBox(height: 24),
-
-            // 2. PREFERENCES
-            _buildSectionHeader("Preferences"),
-            _buildSwitchTile(
-              icon: Icons.notifications_outlined,
-              title: "Push Notifications",
-              value: _notificationsEnabled,
-              onChanged: (val) => setState(() => _notificationsEnabled = val),
-            ),
-            _buildSwitchTile(
-              icon: Icons.dark_mode_outlined,
-              title: "Dark Mode",
-              value: _darkMode,
-              onChanged: (val) => setState(() => _darkMode = val),
-            ),
-
-            const SizedBox(height: 24),
-
-            // 3. SECURITY & DATA
-            _buildSectionHeader("Security & Data"),
-            _buildSwitchTile(
-              icon: Icons.fingerprint,
-              title: "Biometric Lock",
-              subtitle: "FaceID / TouchID",
-              value: _biometricEnabled,
-              onChanged: (val) => setState(() => _biometricEnabled = val),
-            ),
             _buildActionTile(
-              icon: Icons.download_rounded,
-              title: "Export Health Data",
-              onTap: () {},
-            ),
-            _buildActionTile(
-              icon: Icons.cleaning_services_rounded,
-              title: "Clear App Cache",
-              onTap: () => _showClearCacheDialog(context),
+              icon: Icons.lock_reset_rounded,
+              title: "Change Password",
+              subtitle: "Reset via secure email link",
+              onTap: () => _showPasswordResetDialog(context),
             ),
 
-            const SizedBox(height: 24),
-
-            // 4. SUPPORT & LEGAL (New Section)
-            _buildSectionHeader("Support & Legal"),
+            const SizedBox(height: 32),
+            _buildSectionHeader("Data Management"),
             _buildActionTile(
-              icon: Icons.help_outline_rounded,
+              icon: Icons.auto_delete_outlined,
+              title: "Clear Health Records",
+              subtitle: "Wipe meal and medication history",
+              onTap: () => _showClearDataDialog(context),
+            ),
+
+            const SizedBox(height: 32),
+            _buildSectionHeader("Help & Support"),
+            _buildActionTile(
+              icon: Icons.support_agent_rounded,
               title: "Help Center",
-              onTap: () {}, // Navigate to Help FAQ
+              subtitle: "FAQs & Direct Support",
+              onTap: () => _showHelpCenter(context),
             ),
             _buildActionTile(
-              icon: Icons.privacy_tip_outlined,
+              icon: Icons.shield_outlined,
               title: "Privacy Policy",
-              onTap: () => _showLegalDialog(context, "Privacy Policy", _privacyPolicyText),
+              onTap: () => _showLegalSheet(context, "Privacy Policy", _privacyPolicyContent()),
             ),
             _buildActionTile(
-              icon: Icons.description_outlined,
+              icon: Icons.gavel_rounded,
               title: "Terms of Service",
-              onTap: () => _showLegalDialog(context, "Terms of Service", _termsText),
-            ),
-            _buildActionTile(
-              icon: Icons.star_rate_rounded,
-              title: "Rate Us",
-              onTap: () {}, // Open Store Link
+              onTap: () => _showLegalSheet(context, "Terms of Service", _termsContent()),
             ),
 
-            const SizedBox(height: 24),
-
-            // 5. DANGER ZONE
-            _buildSectionHeader("Danger Zone"),
-            _buildActionTile(
-              icon: Icons.no_accounts_rounded,
-              title: "Delete Account",
-              subtitle: "Permanently delete your account",
-              isDestructive: true,
-              onTap: () => _showDeleteAccountDialog(context),
-            ),
+            // const SizedBox(height: 32),
+            // _buildSectionHeader("Danger Zone"),
+            // _buildActionTile(
+            //   icon: Icons.no_accounts_rounded,
+            //   title: "Delete Account",
+            //   subtitle: "Permanently erase all data",
+            //   isDestructive: true,
+            //   onTap: () => _showDeleteAccountDialog(context),
+            // ),
 
             const SizedBox(height: 40),
+            _buildLogoutButton(),
+            const SizedBox(height: 40),
+            _buildFooter(),
+          ],
+        ),
+      ),
+    );
+  }
 
-            // 6. LOGOUT
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton(
-                onPressed: () => _handleLogout(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.red,
-                  elevation: 0,
-                  side: BorderSide(color: Colors.red.shade200),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.logout_rounded, color: Colors.red),
-                    SizedBox(width: 8),
-                    Text("Log Out", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ),
-            ),
+  // --- MODERN DIALOGS ---
 
-            const SizedBox(height: 30),
+  void _showPasswordResetDialog(BuildContext context) {
+    final email = ref.read(authProvider).value?.email ?? "your email";
 
-            // VERSION
-            Center(
-              child: Column(
+    showDialog(
+      context: context,
+      barrierDismissible: !_isResettingPassword,
+      builder: (ctx) => StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+              contentPadding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    "Aura Health",
-                    style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.bold),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(color: const Color(0xFF1E88E5).withOpacity(0.1), shape: BoxShape.circle),
+                    child: const Icon(Icons.alternate_email_rounded, color: Color(0xFF1E88E5), size: 36),
                   ),
+                  const SizedBox(height: 24),
+                  const Text("Reset Password", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20)),
+                  const SizedBox(height: 12),
                   Text(
-                    "v1.0.0 (Beta Build 102)",
-                    style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                    "We'll send a secure link to $email. Please follow the link to set a new password.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 14, height: 1.6),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
+              actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+              actions: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: _isResettingPassword ? null : () => Navigator.pop(ctx),
+                        child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E88E5),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        onPressed: _isResettingPassword ? null : () async {
+                          setDialogState(() => _isResettingPassword = true);
+                          try {
+                            await ref.read(authProvider.notifier).resetPassword();
+                            if (mounted) {
+                              Navigator.pop(ctx);
+                              _showSuccessSnackBar("Reset link sent! Check your inbox.");
+                            }
+                          } finally {
+                            if (mounted) setDialogState(() => _isResettingPassword = false);
+                          }
+                        },
+                        child: _isResettingPassword
+                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Text("Send Link", style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          }
       ),
     );
   }
 
-  // --- ACTIONS & DIALOGS ---
-
-  void _handleLogout(BuildContext context) {
+  // --- GENERIC DIALOG HELPER FOR OTHER ACTIONS ---
+  void _showAppDialog(BuildContext context, {
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String content,
+    required String actionText,
+    required VoidCallback onConfirm,
+    bool isDestructive = false,
+  }) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text("Log Out?"),
-        content: const Text("Are you sure you want to sign out? You will need to login again to access your data."),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: iconColor.withOpacity(0.1), shape: BoxShape.circle),
+              child: Icon(icon, color: iconColor, size: 36),
+            ),
+            const SizedBox(height: 24),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20)),
+            const SizedBox(height: 12),
+            Text(content, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600, fontSize: 14, height: 1.6)),
+          ],
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await LocalStorageService().clearAll();
-              await ref.read(authProvider.notifier).logout();
-
-              if (context.mounted) {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                      (route) => false,
-                );
-              }
-            },
-            child: const Text("Log Out", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isDestructive ? Colors.red : const Color(0xFF1E88E5),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    onConfirm();
+                  },
+                  child: Text(actionText, style: const TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+
+  void _showClearDataDialog(BuildContext context) {
+    bool _isClearing = false; // Local state for the loader
+
+    showDialog(
+      context: context,
+      barrierDismissible: !_isClearing, // Prevent closing while deleting
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+            contentPadding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.history_toggle_off_rounded, color: Colors.orange, size: 36),
+                ),
+                const SizedBox(height: 24),
+                const Text("Clear Records?", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20)),
+                const SizedBox(height: 12),
+                Text(
+                  "This will permanently wipe your history from our servers and this device. This cannot be undone.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14, height: 1.6),
+                ),
+              ],
+            ),
+            actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+            actions: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: _isClearing ? null : () => Navigator.pop(ctx),
+                      child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange.shade700,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      onPressed: _isClearing ? null : () async {
+                        setDialogState(() => _isClearing = true);
+
+                        final uid = ref.read(authProvider).value?.uid;
+                        if (uid != null) {
+                          // 1. Clear Backend
+                          final success = await InteractionService().deleteBackendHistory(uid);
+
+                          if (success) {
+                            // 2. Clear Local Storage
+                            await LocalStorageService().clearAll();
+                            // 3. Refresh Providers
+                            ref.refresh(allMealsNotifier);
+
+                            if (mounted) {
+                              Navigator.pop(ctx);
+                              _showSuccessSnackBar("All health records have been wiped.");
+                            }
+                          } else {
+                            if (mounted) {
+                              setDialogState(() => _isClearing = false);
+                              _showErrorSnackBar("Backend sync failed. Please try again.");
+                            }
+                          }
+                        }
+                      },
+                      child: _isClearing
+                          ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                          : const Text("Wipe Data", style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: Colors.red.shade600,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.all(20),
+    ));
   }
 
   void _showDeleteAccountDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Delete Account"),
-        content: const Text("This is a permanent action. All your health data will be wiped immediately. This cannot be undone."),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-          TextButton(
-            onPressed: () {
-              // TODO: Call API to delete user
-              Navigator.pop(ctx);
-            },
-            child: const Text("Delete Forever", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
+    HapticFeedback.heavyImpact();
+    _showAppDialog(
+      context,
+      icon: Icons.report_problem_rounded,
+      iconColor: Colors.red,
+      title: "Delete Account?",
+      content: "This is irreversible. All health trends, medical records, and AI profiles will be permanently destroyed.",
+      actionText: "Delete Forever",
+      isDestructive: true,
+      onConfirm: () async {
+        await ref.read(authProvider.notifier).logout();
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const LoginScreen()), (r) => false);
+        }
+      },
     );
   }
 
-  void _showClearCacheDialog(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Cache Cleared Successfully")));
-  }
+  // --- BOTTOM SHEETS ---
 
-  void _showLegalDialog(BuildContext context, String title, String content) {
+  void _showHelpCenter(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (ctx, scrollController) => Column(
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
-            ),
-            Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const Divider(),
-            Expanded(
-              child: SingleChildScrollView(
-                controller: scrollController,
-                padding: const EdgeInsets.all(20),
-                child: Text(content, style: const TextStyle(fontSize: 14, height: 1.5, color: Colors.black87)),
-              ),
-            ),
+            Center(child: Container(width: 45, height: 5, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
+            const SizedBox(height: 24),
+            const Text("Help Center", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8),
+            const Text("Find answers or reach out to our support team.", style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 32),
+            // _buildFaqItem("How does AI scan prescriptions?", "Aura Health uses Gemini 1.5 Flash to parse document text. For best results, use bright lighting and clear images."),
+            _buildFaqItem("Is my data secure?", "Your medical data is stored locally and synced via encrypted Firebase channels. We never sell your personal info."),
+            _buildFaqItem("Can I export my data?", "Currently, data is device-locked. We are working on a PDF export feature for future releases."),
+            const SizedBox(height: 32),
+            const Text("Contact Us", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+            const SizedBox(height: 16),
+            _buildContactTile(Icons.mail_rounded, "support@aurahealth.com", "Email Support"),
+            // _buildContactTile(Icons.chat_bubble_rounded, "Live Chat", "Available 9 AM - 6 PM"),
           ],
         ),
       ),
     );
   }
 
-  // --- WIDGET HELPERS ---
+  void _showLegalSheet(BuildContext context, String title, Widget content) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        maxChildSize: 0.95,
+        builder: (_, scrollController) => Container(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+          decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
+          child: Column(
+            children: [
+              Container(width: 45, height: 5, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10))),
+              const SizedBox(height: 24),
+              Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 24),
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  physics: const BouncingScrollPhysics(),
+                  children: [content],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- UI COMPONENT HELPERS ---
+
+  Widget _buildFaqItem(String q, String a) {
+    return ExpansionTile(
+      tilePadding: EdgeInsets.zero,
+      title: Text(q, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+      children: [Padding(padding: const EdgeInsets.only(bottom: 16), child: Text(a, style: const TextStyle(color: Colors.blueGrey, height: 1.5)))],
+    );
+  }
+
+  Widget _buildContactTile(IconData icon, String title, String sub) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(color: const Color(0xFFF1F8E9), borderRadius: BorderRadius.circular(16)),
+      child: ListTile(
+        leading: Icon(icon, color: const Color(0xFF2E7D32)),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Text(sub, style: const TextStyle(fontSize: 12)),
+        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+      ),
+    );
+  }
+
+  Widget _buildLogoutButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 60,
+      child: ElevatedButton(
+        onPressed: () => _handleLogout(context),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.red,
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: Colors.red.shade100)),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.power_settings_new_rounded, size: 22),
+            SizedBox(width: 12),
+            Text("Sign Out", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _handleLogout(BuildContext context) {
+    _showAppDialog(
+      context,
+      icon: Icons.logout_rounded,
+      iconColor: Colors.red,
+      title: "Sign Out?",
+      content: "You will be returned to the login screen. Your local health records will be kept safe.",
+      actionText: "Sign Out",
+      onConfirm: () async {
+        await ref.read(authProvider.notifier).logout();
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const LoginScreen()), (r) => false);
+        }
+      },
+    );
+  }
 
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 12),
-      child: Text(
-        title.toUpperCase(),
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          color: Colors.grey.shade600,
-          letterSpacing: 1.0,
-        ),
-      ),
+      padding: const EdgeInsets.only(left: 4, bottom: 16),
+      child: Text(title.toUpperCase(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.blueGrey.shade200, letterSpacing: 1.5)),
     );
   }
 
-  Widget _buildSwitchTile({
-    required IconData icon,
-    required String title,
-    String? subtitle,
-    required bool value,
-    required Function(bool) onChanged,
-  }) {
+  Widget _buildActionTile({required IconData icon, required String title, String? subtitle, bool isDestructive = false, required VoidCallback onTap}) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 2)),
-        ],
-      ),
-      child: SwitchListTile(
-        value: value,
-        onChanged: onChanged,
-        activeColor: const Color(0xFF1E88E5),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        secondary: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: const Color(0xFF1E88E5).withOpacity(0.1), shape: BoxShape.circle),
-          child: Icon(icon, color: const Color(0xFF1E88E5), size: 20),
-        ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-        subtitle: subtitle != null ? Text(subtitle, style: const TextStyle(fontSize: 12)) : null,
-      ),
-    );
-  }
-
-  Widget _buildActionTile({
-    required IconData icon,
-    required String title,
-    String? subtitle,
-    bool isDestructive = false,
-    required VoidCallback onTap,
-  }) {
-    final color = isDestructive ? Colors.red : Colors.black87;
-    final iconColor = isDestructive ? Colors.red : const Color(0xFF1E88E5);
-    final bgColor = isDestructive ? Colors.red.withOpacity(0.1) : const Color(0xFF1E88E5).withOpacity(0.1);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 2)),
-        ],
-      ),
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 15, offset: const Offset(0, 5))]),
       child: ListTile(
         onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
-          child: Icon(icon, color: iconColor, size: 20),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: (isDestructive ? Colors.red : const Color(0xFF1E88E5)).withOpacity(0.08), shape: BoxShape.circle),
+          child: Icon(icon, color: isDestructive ? Colors.red : const Color(0xFF1E88E5), size: 24),
         ),
-        title: Text(title, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: color)),
-        subtitle: subtitle != null ? Text(subtitle, style: const TextStyle(fontSize: 12)) : null,
+        title: Text(title, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: isDestructive ? Colors.red : Colors.black87)),
+        subtitle: subtitle != null ? Text(subtitle, style: TextStyle(fontSize: 13, color: Colors.grey.shade500)) : null,
         trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
       ),
     );
   }
 
-  // --- DUMMY LEGAL TEXT ---
-  final String _privacyPolicyText = """
-**Privacy Policy**
+  void _showSuccessSnackBar(String msg) {
+    HapticFeedback.lightImpact();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Row(
+        children: [
+          const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+          const SizedBox(width: 12),
+          Text(msg, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+      backgroundColor: Colors.green.shade600,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.all(20),
+    ));
+  }
 
-Your privacy is important to us. It is Aura Health's policy to respect your privacy regarding any information we may collect from you across our application.
+  Widget _buildFooter() {
+    return Center(
+      child: Column(
+        children: [
+          const Text("AURA HEALTH", style: TextStyle(color: Colors.black26, fontWeight: FontWeight.w900, letterSpacing: 2)),
+          const SizedBox(height: 4),
+          Text("v1.0.4 Stable Release", style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
+        ],
+      ),
+    );
+  }
 
-1. **Information we collect**
-We only ask for personal information when we truly need it to provide a service to you. We collect it by fair and lawful means, with your knowledge and consent.
+  // --- LEGAL CONTENTS ---
 
-2. **How we store data**
-We only retain collected information for as long as necessary to provide you with your requested service. What data we store, we’ll protect within commercially acceptable means to prevent loss and theft.
+  Widget _privacyPolicyContent() {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("1. Data Security", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+        SizedBox(height: 8),
+        Text("Aura Health stores your medical logs and vitals locally on your device. Syncing is handled via industry-standard Firebase encryption. We never access your prescription images directly."),
+        SizedBox(height: 24),
+        Text("2. AI Privacy", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+        SizedBox(height: 8),
+        Text("When you scan a document, the data is processed by Gemini AI. No images are stored on our servers after the text extraction is complete."),
+        SizedBox(height: 24),
+        Text("3. Your Rights", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+        SizedBox(height: 8),
+        Text("You have the right to request account deletion and clear all local caches at any time. Your data belongs to you."),
+      ],
+    );
+  }
 
-3. **Sharing of data**
-We don't share any personally identifying information publicly or with third-parties, except when required to by law.
-
-4. **Your rights**
-You are free to refuse our request for your personal information, with the understanding that we may be unable to provide you with some of your desired services.
-""";
-
-  final String _termsText = """
-**Terms of Service**
-
-1. **Terms**
-By accessing our app, Aura Health, you agree to be bound by these terms of service, all applicable laws and regulations, and agree that you are responsible for compliance with any applicable local laws.
-
-2. **Use License**
-Permission is granted to temporarily download one copy of the materials (information or software) on Aura Health's website for personal, non-commercial transitory viewing only.
-
-3. **Disclaimer**
-The materials on Aura Health's application are provided on an 'as is' basis. Aura Health makes no warranties, expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.
-""";
+  Widget _termsContent() {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("1. Disclaimer", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+        SizedBox(height: 8),
+        Text("Aura Health is an AI assistant, not a licensed medical professional. Always consult a doctor before making medical decisions based on AI analysis."),
+        SizedBox(height: 24),
+        Text("2. Accuracy", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+        SizedBox(height: 8),
+        Text("While we use state-of-the-art AI, prescription scanning and calorie counting are estimates. Users are responsible for verifying all logged data."),
+        SizedBox(height: 24),
+        Text("3. Usage", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+        SizedBox(height: 8),
+        Text("By using this app, you agree to provide truthful information to ensure the most accurate health tracking possible."),
+      ],
+    );
+  }
 }
