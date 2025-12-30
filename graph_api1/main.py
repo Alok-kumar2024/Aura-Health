@@ -1,6 +1,6 @@
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from typing import Optional, List
-from graph_api1.db import find_interactions,drug_exists
+from graph_api1.db import find_interactions
 from graph_api1.ai_explainer import explain
 
 from graph_api1.vision import detect_food
