@@ -85,6 +85,49 @@ app.get("/history" ,async (req ,res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 })
+
+
+
+app.delete("/deleteSingleHistory/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedDoc = await interactions.findByIdAndDelete(id);
+
+    if (!deletedDoc) {
+      return res.status(404).json({ error: "Interaction not found" });
+    }
+
+    res.status(200).json({ 
+      message: "Interaction deleted successfully",
+      deletedId: id 
+    });
+
+  } catch (error) {
+    console.error("Error deleting interaction:", error);
+    res.status(500).json({ error: "Failed to delete interaction" });
+  }
+});
+app.delete("/clearHistory", async (req, res) => {
+  try {
+    const { uid } = req.query; 
+
+    if (!uid) {
+      return res.status(400).json({ error: "User ID (uid) is required" });
+    }
+
+    const result = await interactions.deleteMany({ uid: String(uid) });
+
+    res.status(200).json({
+      message: `Successfully cleared history.`,
+      deletedCount: result.deletedCount
+    });
+
+  } catch (error) {
+    console.error("Error clearing history:", error);
+    res.status(500).json({ error: "Failed to clear history" });
+  }
+});
+
 const port = process.env.PORT || 4000;
 main().
 then(async ()=>{
