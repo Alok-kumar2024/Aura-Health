@@ -27,7 +27,7 @@ app.post("/getInteractions", async (req, res) => {
     for (const d of drugs) {
       for (const f of foods) {
         requests.push(
-          fetch("https://aura-health-70db.onrender.com/check-meal", {
+          fetch("https://aura-health-9cvj.onrender.com/check-meal", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
