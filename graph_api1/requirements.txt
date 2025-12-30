@@ -4,3 +4,4 @@ neo4j
 groq
 python-dotenv
 ultralytics
+python-multipart
