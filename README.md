@@ -44,7 +44,6 @@ AuraHealth is an AI-powered dietary guardian that bridges the gap between a pati
 * Fastapi
 * LLM
     
-
 **For App development**
 * Flutter 
 * Dart 
