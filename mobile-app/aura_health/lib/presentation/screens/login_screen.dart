@@ -1,11 +1,11 @@
-import 'package:aura_heallth/presentation/screens/personal_details_screen.dart';
 import 'package:aura_heallth/presentation/screens/sign_up_screen.dart';
+import 'package:aura_heallth/presentation/screens/personal_details_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../service/local_storage_service.dart';
 import '../../state/auth_provider.dart';
+import '../../service/local_storage_service.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -18,13 +18,17 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
   bool _obscurePassword = true;
   bool _isHandlingAuth = false;
+
+  // Local state to keep the loader active during cloud data restoration
+  bool _isSyncingData = false;
 
   @override
   void initState() {
     super.initState();
-    // Clear any existing auth errors when screen loads
+    // Clear any lingering auth errors when screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authState = ref.read(authProvider);
       if (authState.hasError) {
@@ -44,11 +48,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
 
-    // Listen for auth state changes to navigate or show errors
+    // Combined loading state for UI feedback
+    final bool showLoader = authState.isLoading || _isSyncingData;
+
+    // Listen for auth state changes to trigger data sync and navigation
     if (!_isHandlingAuth && authState.isLoading) {
       _isHandlingAuth = true;
     } else if (_isHandlingAuth && !authState.isLoading) {
-      // ADD 'async' HERE to allow 'await' inside the callback
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         _isHandlingAuth = false;
 
@@ -59,23 +65,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             isError: true,
           );
         } else if (authState.value != null) {
-          // 1. Pull data from Firebase into Hive
-          await LocalStorageService().restoreFromCloud();
+          // Keep the loader spinning while we fetch the profile from Firestore
+          setState(() => _isSyncingData = true);
 
-          if (!mounted) return;
+          try {
+            // 1. Restore the user profile and onboarding status from the cloud
+            await LocalStorageService().restoreFromCloud();
 
-          // 2. Check the now-populated local state from Hive
-          final bool isComplete = LocalStorageService().hasCompletedOnboarding();
+            if (!mounted) return;
 
-          // 3. Navigate based on the Firebase-synced status
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => isComplete
-                  ? const HomeScreen()
-                  : const PersonalDetailsScreen(),
-            ),
-          );
+            // 2. Check if the user has previously completed onboarding
+            final bool isComplete = LocalStorageService()
+                .hasCompletedOnboarding();
+
+            // 3. Navigate to the appropriate screen
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => isComplete
+                    ? const HomeScreen()
+                    : const PersonalDetailsScreen(),
+              ),
+            );
+          } catch (e) {
+            _showCustomSnackBar(
+              context,
+              "Failed to restore profile data.",
+              isError: true,
+            );
+          } finally {
+            if (mounted) setState(() => _isSyncingData = false);
+          }
         }
       });
     }
@@ -151,7 +171,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () => _showPasswordResetDialog(context),
+                        onPressed: showLoader
+                            ? null
+                            : () => _showPasswordResetDialog(context),
                         child: const Text(
                           "Forgot Password?",
                           style: TextStyle(
@@ -167,20 +189,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     SizedBox(
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: authState.isLoading ? null : _handleLogin,
+                        onPressed: showLoader ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1E88E5),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
+                          elevation: 0,
                         ),
-                        child: authState.isLoading
+                        child: showLoader
                             ? const SizedBox(
                                 height: 24,
                                 width: 24,
                                 child: CircularProgressIndicator(
                                   color: Colors.white,
-                                  strokeWidth: 2,
+                                  strokeWidth: 2.5,
                                 ),
                               )
                             : const Text(
@@ -265,50 +288,96 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) {
+          // NOTE: Ensure isResetting is declared OUTSIDE the builder if using a simple StatefulBuilder
+          // or use a local variable managed by setDialogState.
           bool isResetting = false;
 
           return AlertDialog(
             backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(28),
-            ),
+            surfaceTintColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+            contentPadding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.alternate_email_rounded,
-                  color: Color(0xFF1E88E5),
-                  size: 48,
+                // THEMED ICON CONTAINER
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E88E5).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.alternate_email_rounded,
+                    color: Color(0xFF1E88E5),
+                    size: 36,
+                  ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
                 const Text(
                   "Reset Password",
-                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 22,
+                    color: Colors.black87,
+                    letterSpacing: -0.5,
+                  ),
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  "We will send a secure password reset link to $email.",
+                RichText(
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.grey, fontSize: 14),
+                  text: TextSpan(
+                    style: const TextStyle(color: Colors.grey, fontSize: 14, height: 1.5),
+                    children: [
+                      const TextSpan(text: "We will send a secure link to "),
+                      TextSpan(
+                        text: email,
+                        style: const TextStyle(
+                          color: Color(0xFF1E88E5),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const TextSpan(text: ". Please follow the link to set a new password."),
+                    ],
+                  ),
                 ),
               ],
             ),
+            actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text("Cancel"),
-              ),
-              ElevatedButton(
-                onPressed: isResetting
-                    ? null
-                    : () async {
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: isResetting ? null : () => Navigator.pop(ctx),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text(
+                        "Cancel",
+                        style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E88E5),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      onPressed: isResetting
+                          ? null
+                          : () async {
                         setDialogState(() => isResetting = true);
                         try {
-                          await ref
-                              .read(authProvider.notifier)
-                              .resetPassword();
+                          await ref.read(authProvider.notifier).resetPassword(email);
                           if (context.mounted) {
                             Navigator.pop(ctx);
                             _showCustomSnackBar(
@@ -317,23 +386,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             );
                           }
                         } catch (e) {
-                          if (context.mounted)
-                            _showCustomSnackBar(
-                              context,
-                              e.toString(),
-                              isError: true,
-                            );
+                          if (context.mounted) {
+                            _showCustomSnackBar(context, e.toString(), isError: true);
+                          }
                         } finally {
+                          // Use a local state check if needed
                           setDialogState(() => isResetting = false);
                         }
                       },
-                child: isResetting
-                    ? const SizedBox(
+                      child: isResetting
+                          ? const SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
                       )
-                    : const Text("Send Link"),
+                          : const Text(
+                        "Send Link",
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           );
@@ -347,6 +423,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     String message, {
     bool isError = false,
   }) {
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(

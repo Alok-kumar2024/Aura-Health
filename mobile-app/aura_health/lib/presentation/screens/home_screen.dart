@@ -1,6 +1,5 @@
 import 'package:aura_heallth/presentation/screens/Insights_screen.dart';
 import 'package:aura_heallth/presentation/screens/add_meal_screen.dart';
-import 'package:aura_heallth/presentation/screens/camera_screen.dart';
 import 'package:aura_heallth/presentation/screens/meal_history_screen.dart';
 import 'package:aura_heallth/presentation/screens/profile_screen.dart';
 import 'package:aura_heallth/presentation/screens/voice_sheet_screen.dart';
@@ -28,42 +27,27 @@ class HomeScreen extends ConsumerWidget {
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFF8F9FA),
-
-        // --- VOICE INPUT BUTTON ---
         floatingActionButton: currentNav == BottomNavigator.HOME
-            ? FloatingActionButton(
+            ? FloatingActionButton.extended(
                 onPressed: () => _showVoiceInput(context),
                 backgroundColor: const Color(0xFF1E88E5),
-                elevation: 4,
-                shape: const CircleBorder(),
-                child: const Icon(
-                  Icons.mic_rounded,
-                  color: Colors.white,
-                  size: 28,
+                elevation: 6,
+                icon: const Icon(Icons.mic_rounded, color: Colors.white),
+                label: const Text(
+                  "Ask AI",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               )
             : null,
-        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-
-        // --- BODY CONTENT ---
         body: SafeArea(
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
-            transitionBuilder: (Widget child, Animation<double> animation) {
-              return FadeTransition(
-                opacity: animation,
-                child: ScaleTransition(
-                  scale: Tween<double>(
-                    begin: 0.98,
-                    end: 1.0,
-                  ).animate(animation),
-                  child: child,
-                ),
-              );
-            },
             child: switch (currentNav) {
               BottomNavigator.HOME => const HomeContent(key: ValueKey('Home')),
-              BottomNavigator.HISTORY =>  MealHistoryScreen(
+              BottomNavigator.HISTORY => MealHistoryScreen(
                 key: ValueKey('History'),
               ),
               BottomNavigator.INSIGHT => const InsightsScreen(
@@ -85,17 +69,15 @@ class HomeScreen extends ConsumerWidget {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (ctx) {
-        return VoiceSheet(
-          onResult: (String recognizedText) {
-            Navigator.pop(ctx);
-            showDialog(
-              context: context,
-              builder: (context) => AddMealScreen(initialText: recognizedText),
-            );
-          },
-        );
-      },
+      builder: (ctx) => VoiceSheet(
+        onResult: (String recognizedText) {
+          Navigator.pop(ctx);
+          showDialog(
+            context: context,
+            builder: (context) => AddMealScreen(initialText: recognizedText),
+          );
+        },
+      ),
     );
   }
 
@@ -104,17 +86,11 @@ class HomeScreen extends ConsumerWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          ),
-        ],
+        border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
       ),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 12.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -155,8 +131,7 @@ class HomeScreen extends ConsumerWidget {
     String label,
     BottomNavigator isActive,
   ) {
-    final bottomWatch = ref.watch(bottomProvider);
-    final isSelected = isActive == bottomWatch;
+    final isSelected = isActive == ref.watch(bottomProvider);
     const primaryColor = Color(0xFF1E88E5);
 
     return InkWell(
@@ -185,7 +160,7 @@ class HomeScreen extends ConsumerWidget {
                 style: const TextStyle(
                   color: primaryColor,
                   fontSize: 14,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
@@ -201,7 +176,7 @@ class HomeContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final meds = ref.watch(medicationProvider);
+    final medsCount = ref.watch(medicationProvider).length;
 
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
@@ -211,53 +186,24 @@ class HomeContent extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
-              _buildDailyOverviewBanner(meds.length),
-              const SizedBox(height: 24),
+              _buildStatusBanner(medsCount),
+              const SizedBox(height: 32),
+
+              // PRIMARY ACTION CARD
               const Text(
-                "Quick Actions",
+                "Meal Analysis",
                 style: TextStyle(
                   fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w900,
                   color: Colors.black87,
                 ),
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: ActionCard(
-                      bgColor: const Color(0xFFE3F2FD),
-                      title: "Snap Meal",
-                      subtitle: "ML Analysis",
-                      textColor: const Color(0xFF1E88E5),
-                      icon: Icons.camera_enhance_rounded,
-                      iconColor: const Color(0xFF1E88E5),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const CameraScreen()),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ActionCard(
-                      bgColor: const Color(0xFFF1F8E9),
-                      title: "Log Food",
-                      subtitle: "Manual Entry",
-                      textColor: const Color(0xFF2E7D32),
-                      icon: Icons.restaurant_rounded,
-                      iconColor: const Color(0xFF2E7D32),
-                      onTap: () => showDialog(
-                        context: context,
-                        builder: (context) => const AddMealScreen(),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              _buildHeroActionCard(context),
+
               const SizedBox(height: 32),
               const ActiveMedicationSection(),
-              const SizedBox(height: 100),
+              const SizedBox(height: 120),
             ]),
           ),
         ),
@@ -265,23 +211,16 @@ class HomeContent extends ConsumerWidget {
     );
   }
 
-  Widget _buildDailyOverviewBanner(int medCount) {
+  Widget _buildStatusBanner(int medCount) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF1E88E5), Color(0xFF64B5F6)],
+          colors: [Color(0xFF1E88E5), Color(0xFF1565C0)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1E88E5).withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(24),
       ),
       child: Row(
         children: [
@@ -290,27 +229,100 @@ class HomeContent extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  "Your Health Today",
+                  "Safe Interactions",
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
-                  "You have $medCount medications currently active in your vault.",
+                  "Aura is currently monitoring $medCount active medications for potential risks.",
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: 14,
+                    color: Colors.white.withOpacity(0.85),
+                    fontSize: 13,
                     height: 1.4,
                   ),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.auto_awesome, color: Colors.white, size: 40),
+          const SizedBox(width: 12),
+          const Icon(Icons.shield_rounded, color: Colors.white, size: 44),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHeroActionCard(BuildContext context) {
+    return InkWell(
+      onTap: () => showDialog(
+        context: context,
+        builder: (context) => const AddMealScreen(),
+      ),
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: const Color(0xFFE3F2FD), width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE3F2FD),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(
+                Icons.restaurant_menu_rounded,
+                color: Color(0xFF1E88E5),
+                size: 32,
+              ),
+            ),
+            const SizedBox(width: 20),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Analyze Meal",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    "Check food-drug interactions manually",
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: Colors.grey,
+              size: 16,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -338,7 +350,7 @@ class HomeHeader extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Hello, ${profile.name} 👋",
+                  "Hi, ${profile.name} 👋",
                   style: const TextStyle(
                     color: Colors.black87,
                     fontSize: 22,
@@ -346,7 +358,7 @@ class HomeHeader extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  "Tap the mic to log meals",
+                  "How are you feeling today?",
                   style: TextStyle(
                     color: Colors.grey.shade600,
                     fontSize: 14,
@@ -356,73 +368,14 @@ class HomeHeader extends ConsumerWidget {
               ],
             ),
           ),
+          // IconButton(
+          //   onPressed: () {}, // Future: Notifications
+          //   icon: Icon(
+          //     Icons.notifications_none_rounded,
+          //     color: Colors.grey.shade400,
+          //   ),
+          // ),
         ],
-      ),
-    );
-  }
-}
-
-class ActionCard extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final Color bgColor;
-  final Color textColor;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  const ActionCard({
-    super.key,
-    required this.icon,
-    required this.iconColor,
-    required this.bgColor,
-    required this.textColor,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: iconColor, size: 26),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: TextStyle(
-                color: textColor,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            Text(
-              subtitle,
-              style: TextStyle(
-                color: textColor.withOpacity(0.7),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -441,11 +394,11 @@ class ActiveMedicationSection extends ConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              "Scheduled Meds",
+              "Your Medication Vault",
               style: TextStyle(
                 color: Colors.black87,
                 fontSize: 18,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w900,
               ),
             ),
             TextButton(
@@ -456,44 +409,65 @@ class ActiveMedicationSection extends ConsumerWidget {
                 ),
               ),
               child: const Text(
-                "See All",
-                style: TextStyle(fontWeight: FontWeight.bold),
+                "Manage",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1E88E5),
+                ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         if (medications.isEmpty)
-          Container(
-            padding: const EdgeInsets.all(20),
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.grey.shade100),
-            ),
-            child: const Text(
-              "No medications added yet.",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 13),
-            ),
-          )
+          _buildEmptyMeds()
         else
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: medications.length > 3 ? 3 : medications.length,
-            separatorBuilder: (c, i) => const SizedBox(height: 12),
-            itemBuilder: (ctx, idx) {
-              final med = medications[idx];
-              return MedicationCard(
-                name: med.name,
-                dose: "${med.dosage} • ${med.timing}",
-                category: med.schedule,
-              );
-            },
-          ),
+          ...medications
+              .take(3)
+              .map(
+                (med) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: MedicationCard(
+                    name: med.name,
+                    dose: "${med.dosage} • ${med.timing}",
+                    category: med.schedule,
+                  ),
+                ),
+              ),
       ],
+    );
+  }
+
+  Widget _buildEmptyMeds() {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.medical_information_outlined,
+            color: Colors.grey.shade300,
+            size: 48,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            "Vault is empty",
+            style: TextStyle(
+              color: Colors.black54,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const Text(
+            "Add meds to check meal safety",
+            style: TextStyle(color: Colors.grey, fontSize: 12),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -547,29 +521,35 @@ class MedicationCard extends StatelessWidget {
                 Text(
                   name,
                   style: const TextStyle(
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w900,
                     fontSize: 16,
+                    color: Colors.black87,
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
                   dose,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.blueGrey.shade50,
-              borderRadius: BorderRadius.circular(8),
+              color: const Color(0xFFE8F5E9),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
               category,
               style: const TextStyle(
                 fontSize: 10,
-                fontWeight: FontWeight.bold,
-                color: Colors.blueGrey,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF2E7D32),
               ),
             ),
           ),

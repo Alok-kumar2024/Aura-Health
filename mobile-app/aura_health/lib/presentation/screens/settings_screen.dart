@@ -27,13 +27,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       appBar: AppBar(
         title: const Text(
           "Settings",
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w900, fontSize: 24),
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.w900,
+            fontSize: 24,
+          ),
         ),
         centerTitle: true,
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: Colors.black),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 20,
+            color: Colors.black,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -52,7 +60,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 final currentProfile = ref.read(profileProvider);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => PersonalDetailsScreen(existingProfile: currentProfile)),
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        PersonalDetailsScreen(existingProfile: currentProfile),
+                  ),
                 );
               },
             ),
@@ -83,12 +94,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _buildActionTile(
               icon: Icons.shield_outlined,
               title: "Privacy Policy",
-              onTap: () => _showLegalSheet(context, "Privacy Policy", _privacyPolicyContent()),
+              onTap: () => _showLegalSheet(
+                context,
+                "Privacy Policy",
+                _privacyPolicyContent(),
+              ),
             ),
             _buildActionTile(
               icon: Icons.gavel_rounded,
               title: "Terms of Service",
-              onTap: () => _showLegalSheet(context, "Terms of Service", _termsContent()),
+              onTap: () =>
+                  _showLegalSheet(context, "Terms of Service", _termsContent()),
             ),
 
             // const SizedBox(height: 32),
@@ -100,7 +116,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             //   isDestructive: true,
             //   onTap: () => _showDeleteAccountDialog(context),
             // ),
-
             const SizedBox(height: 40),
             _buildLogoutButton(),
             const SizedBox(height: 40),
@@ -120,77 +135,123 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       barrierDismissible: !_isResettingPassword,
       builder: (ctx) => StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-              contentPadding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(color: const Color(0xFF1E88E5).withOpacity(0.1), shape: BoxShape.circle),
-                    child: const Icon(Icons.alternate_email_rounded, color: Color(0xFF1E88E5), size: 36),
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+            ),
+            contentPadding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E88E5).withOpacity(0.1),
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(height: 24),
-                  const Text("Reset Password", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20)),
-                  const SizedBox(height: 12),
-                  Text(
-                    "We'll send a secure link to $email. Please follow the link to set a new password.",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 14, height: 1.6),
+                  child: const Icon(
+                    Icons.alternate_email_rounded,
+                    color: Color(0xFF1E88E5),
+                    size: 36,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Text(
+                  "Reset Password",
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  "We'll send a secure link to $email. Please follow the link to set a new password.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 14,
+                    height: 1.6,
+                  ),
+                ),
+              ],
+            ),
+            actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+            actions: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: _isResettingPassword
+                          ? null
+                          : () => Navigator.pop(ctx),
+                      child: const Text(
+                        "Cancel",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E88E5),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      onPressed: _isResettingPassword
+                          ? null
+                          : () async {
+                              setDialogState(() => _isResettingPassword = true);
+                              try {
+                                await ref
+                                    .read(authProvider.notifier)
+                                    .resetPassword();
+                                if (mounted) {
+                                  Navigator.pop(ctx);
+                                  _showSuccessSnackBar(
+                                    "Reset link sent! Check your inbox.",
+                                  );
+                                }
+                              } finally {
+                                if (mounted)
+                                  setDialogState(
+                                    () => _isResettingPassword = false,
+                                  );
+                              }
+                            },
+                      child: _isResettingPassword
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              "Send Link",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                    ),
                   ),
                 ],
               ),
-              actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-              actions: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: _isResettingPassword ? null : () => Navigator.pop(ctx),
-                        child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1E88E5),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        onPressed: _isResettingPassword ? null : () async {
-                          setDialogState(() => _isResettingPassword = true);
-                          try {
-                            await ref.read(authProvider.notifier).resetPassword();
-                            if (mounted) {
-                              Navigator.pop(ctx);
-                              _showSuccessSnackBar("Reset link sent! Check your inbox.");
-                            }
-                          } finally {
-                            if (mounted) setDialogState(() => _isResettingPassword = false);
-                          }
-                        },
-                        child: _isResettingPassword
-                            ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                            : const Text("Send Link", style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            );
-          }
+            ],
+          );
+        },
       ),
     );
   }
 
   // --- GENERIC DIALOG HELPER FOR OTHER ACTIONS ---
-  void _showAppDialog(BuildContext context, {
+  void _showAppDialog(
+    BuildContext context, {
     required IconData icon,
     required Color iconColor,
     required String title,
@@ -210,13 +271,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: iconColor.withOpacity(0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
               child: Icon(icon, color: iconColor, size: 36),
             ),
             const SizedBox(height: 24),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20)),
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
+            ),
             const SizedBox(height: 12),
-            Text(content, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600, fontSize: 14, height: 1.6)),
+            Text(
+              content,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 14,
+                height: 1.6,
+              ),
+            ),
           ],
         ),
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
@@ -226,16 +301,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Expanded(
                 child: TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    "Cancel",
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isDestructive ? Colors.red : const Color(0xFF1E88E5),
+                    backgroundColor: isDestructive
+                        ? Colors.red
+                        : const Color(0xFF1E88E5),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
@@ -243,7 +328,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     Navigator.pop(ctx);
                     onConfirm();
                   },
-                  child: Text(actionText, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  child: Text(
+                    actionText,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ],
@@ -263,7 +351,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         builder: (context, setDialogState) {
           return AlertDialog(
             backgroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+            ),
             contentPadding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
             content: Column(
               mainAxisSize: MainAxisSize.min,
@@ -274,15 +364,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     color: Colors.orange.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.history_toggle_off_rounded, color: Colors.orange, size: 36),
+                  child: const Icon(
+                    Icons.history_toggle_off_rounded,
+                    color: Colors.orange,
+                    size: 36,
+                  ),
                 ),
                 const SizedBox(height: 24),
-                const Text("Clear Records?", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20)),
+                const Text(
+                  "Clear Records?",
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 20),
+                ),
                 const SizedBox(height: 12),
                 Text(
                   "This will permanently wipe your history from our servers and this device. This cannot be undone.",
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14, height: 1.6),
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 14,
+                    height: 1.6,
+                  ),
                 ),
               ],
             ),
@@ -293,7 +394,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Expanded(
                     child: TextButton(
                       onPressed: _isClearing ? null : () => Navigator.pop(ctx),
-                      child: const Text("Cancel", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        "Cancel",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -302,43 +409,58 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.orange.shade700,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      onPressed: _isClearing ? null : () async {
-                        setDialogState(() => _isClearing = true);
+                      onPressed: _isClearing
+                          ? null
+                          : () async {
+                              setDialogState(() => _isClearing = true);
 
-                        final uid = ref.read(authProvider).value?.uid;
-                        if (uid != null) {
-                          // 1. Clear Backend
-                          final success = await InteractionService().deleteBackendHistory(uid);
+                              final uid = ref.read(authProvider).value?.uid;
+                              if (uid != null) {
+                                // 1. Clear Backend
+                                final success = await InteractionService()
+                                    .deleteBackendHistory(uid);
 
-                          if (success) {
-                            // 2. Clear Local Storage
-                            await LocalStorageService().clearAll();
-                            // 3. Refresh Providers
-                            ref.refresh(allMealsNotifier);
+                                if (success) {
+                                  // 2. Clear Local Storage
+                                  await LocalStorageService().clearAll();
+                                  // 3. Refresh Providers
+                                  ref.refresh(allMealsNotifier);
 
-                            if (mounted) {
-                              Navigator.pop(ctx);
-                              _showSuccessSnackBar("All health records have been wiped.");
-                            }
-                          } else {
-                            if (mounted) {
-                              setDialogState(() => _isClearing = false);
-                              _showErrorSnackBar("Backend sync failed. Please try again.");
-                            }
-                          }
-                        }
-                      },
+                                  if (mounted) {
+                                    Navigator.pop(ctx);
+                                    _showSuccessSnackBar(
+                                      "All health records have been wiped.",
+                                    );
+                                  }
+                                } else {
+                                  if (mounted) {
+                                    setDialogState(() => _isClearing = false);
+                                    _showErrorSnackBar(
+                                      "Backend sync failed. Please try again.",
+                                    );
+                                  }
+                                }
+                              }
+                            },
                       child: _isClearing
                           ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      )
-                          : const Text("Wipe Data", style: TextStyle(fontWeight: FontWeight.bold)),
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              "Wipe Data",
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                     ),
                   ),
                 ],
@@ -351,13 +473,15 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showErrorSnackBar(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: Colors.red.shade600,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      margin: const EdgeInsets.all(20),
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: Colors.red.shade600,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        margin: const EdgeInsets.all(20),
+      ),
+    );
   }
 
   void _showDeleteAccountDialog(BuildContext context) {
@@ -367,14 +491,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       icon: Icons.report_problem_rounded,
       iconColor: Colors.red,
       title: "Delete Account?",
-      content: "This is irreversible. All health trends, medical records, and AI profiles will be permanently destroyed.",
+      content:
+          "This is irreversible. All health trends, medical records, and AI profiles will be permanently destroyed.",
       actionText: "Delete Forever",
       isDestructive: true,
       onConfirm: () async {
         await ref.read(authProvider.notifier).logout();
         if (mounted) {
           Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const LoginScreen()), (r) => false);
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (r) => false,
+          );
         }
       },
     );
@@ -397,19 +524,47 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(child: Container(width: 45, height: 5, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
+            Center(
+              child: Container(
+                width: 45,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
             const SizedBox(height: 24),
-            const Text("Help Center", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+            const Text(
+              "Help Center",
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+            ),
             const SizedBox(height: 8),
-            const Text("Find answers or reach out to our support team.", style: TextStyle(color: Colors.grey)),
+            const Text(
+              "Find answers or reach out to our support team.",
+              style: TextStyle(color: Colors.grey),
+            ),
             const SizedBox(height: 32),
             // _buildFaqItem("How does AI scan prescriptions?", "Aura Health uses Gemini 1.5 Flash to parse document text. For best results, use bright lighting and clear images."),
-            _buildFaqItem("Is my data secure?", "Your medical data is stored locally and synced via encrypted Firebase channels. We never sell your personal info."),
-            _buildFaqItem("Can I export my data?", "Currently, data is device-locked. We are working on a PDF export feature for future releases."),
+            _buildFaqItem(
+              "Is my data secure?",
+              "Your medical data is stored locally and synced via encrypted Firebase channels. We never sell your personal info.",
+            ),
+            _buildFaqItem(
+              "Can I export my data?",
+              "Currently, data is device-locked. We are working on a PDF export feature for future releases.",
+            ),
             const SizedBox(height: 32),
-            const Text("Contact Us", style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+            const Text(
+              "Contact Us",
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+            ),
             const SizedBox(height: 16),
-            _buildContactTile(Icons.mail_rounded, "support@aurahealth.com", "Email Support"),
+            _buildContactTile(
+              Icons.mail_rounded,
+              "support@aurahealth.com",
+              "Email Support",
+            ),
             // _buildContactTile(Icons.chat_bubble_rounded, "Live Chat", "Available 9 AM - 6 PM"),
           ],
         ),
@@ -427,12 +582,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         maxChildSize: 0.95,
         builder: (_, scrollController) => Container(
           padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-          decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
           child: Column(
             children: [
-              Container(width: 45, height: 5, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10))),
+              Container(
+                width: 45,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
               const SizedBox(height: 24),
-              Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
               const SizedBox(height: 24),
               Expanded(
                 child: ListView(
@@ -453,15 +624,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _buildFaqItem(String q, String a) {
     return ExpansionTile(
       tilePadding: EdgeInsets.zero,
-      title: Text(q, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-      children: [Padding(padding: const EdgeInsets.only(bottom: 16), child: Text(a, style: const TextStyle(color: Colors.blueGrey, height: 1.5)))],
+      title: Text(
+        q,
+        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+      ),
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Text(
+            a,
+            style: const TextStyle(color: Colors.blueGrey, height: 1.5),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildContactTile(IconData icon, String title, String sub) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(color: const Color(0xFFF1F8E9), borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F8E9),
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: ListTile(
         leading: Icon(icon, color: const Color(0xFF2E7D32)),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -481,14 +666,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           backgroundColor: Colors.white,
           foregroundColor: Colors.red,
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: Colors.red.shade100)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: Colors.red.shade100),
+          ),
         ),
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.power_settings_new_rounded, size: 22),
             SizedBox(width: 12),
-            Text("Sign Out", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+            Text(
+              "Sign Out",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+            ),
           ],
         ),
       ),
@@ -501,7 +692,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       icon: Icons.logout_rounded,
       iconColor: Colors.red,
       title: "Sign Out?",
-      content: "You will be returned to the login screen. Your local health records will be kept safe.",
+      content:
+          "You will be returned to the login screen. Your local health records will be kept safe.",
       actionText: "Sign Out",
       onConfirm: () async {
         // 1. Wipe local Hive/Storage data FIRST
@@ -514,7 +706,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           // 3. Clear the navigation stack and go to Login
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (r) => false,
+            (r) => false,
           );
         }
       },
@@ -524,53 +716,117 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 16),
-      child: Text(title.toUpperCase(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.blueGrey.shade200, letterSpacing: 1.5)),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+          color: Colors.blueGrey.shade200,
+          letterSpacing: 1.5,
+        ),
+      ),
     );
   }
 
-  Widget _buildActionTile({required IconData icon, required String title, String? subtitle, bool isDestructive = false, required VoidCallback onTap}) {
+  Widget _buildActionTile({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    bool isDestructive = false,
+    required VoidCallback onTap,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 15, offset: const Offset(0, 5))]),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
       child: ListTile(
         onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         leading: Container(
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: (isDestructive ? Colors.red : const Color(0xFF1E88E5)).withOpacity(0.08), shape: BoxShape.circle),
-          child: Icon(icon, color: isDestructive ? Colors.red : const Color(0xFF1E88E5), size: 24),
+          decoration: BoxDecoration(
+            color: (isDestructive ? Colors.red : const Color(0xFF1E88E5))
+                .withOpacity(0.08),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            color: isDestructive ? Colors.red : const Color(0xFF1E88E5),
+            size: 24,
+          ),
         ),
-        title: Text(title, style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: isDestructive ? Colors.red : Colors.black87)),
-        subtitle: subtitle != null ? Text(subtitle, style: TextStyle(fontSize: 13, color: Colors.grey.shade500)) : null,
-        trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 16,
+            color: isDestructive ? Colors.red : Colors.black87,
+          ),
+        ),
+        subtitle: subtitle != null
+            ? Text(
+                subtitle,
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+              )
+            : null,
+        trailing: const Icon(
+          Icons.arrow_forward_ios_rounded,
+          size: 14,
+          color: Colors.grey,
+        ),
       ),
     );
   }
 
   void _showSuccessSnackBar(String msg) {
     HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Row(
-        children: [
-          const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-          const SizedBox(width: 12),
-          Text(msg, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ],
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(
+              Icons.check_circle_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Text(msg, style: const TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        backgroundColor: Colors.green.shade600,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        margin: const EdgeInsets.all(20),
       ),
-      backgroundColor: Colors.green.shade600,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      margin: const EdgeInsets.all(20),
-    ));
+    );
   }
 
   Widget _buildFooter() {
     return Center(
       child: Column(
         children: [
-          const Text("AURA HEALTH", style: TextStyle(color: Colors.black26, fontWeight: FontWeight.w900, letterSpacing: 2)),
+          const Text(
+            "AURA HEALTH",
+            style: TextStyle(
+              color: Colors.black26,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 2,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text("v1.0.4 Stable Release", style: TextStyle(color: Colors.grey.shade400, fontSize: 12)),
+          Text(
+            "v1.0.4 Stable Release",
+            style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+          ),
         ],
       ),
     );
@@ -582,17 +838,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("1. Data Security", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+        Text(
+          "1. Data Security",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+        ),
         SizedBox(height: 8),
-        Text("Aura Health stores your medical logs and vitals locally on your device. Syncing is handled via industry-standard Firebase encryption. We never access your prescription images directly."),
+        Text(
+          "Aura Health prioritizes your privacy by storing medical logs and vitals locally on your device. Cloud syncing is protected via industry-standard Firebase encryption. We never access your prescription images or personal records directly.",
+        ),
         SizedBox(height: 24),
-        Text("2. AI Privacy", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+
+        Text(
+          "2. AI & ML Privacy",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+        ),
         SizedBox(height: 8),
-        Text("When you scan a document, the data is processed by Gemini AI. No images are stored on our servers after the text extraction is complete."),
+        Text(
+          "Document scanning is performed by a specialized Machine Learning (ML) model. This process is ephemeral: data is extracted for your log, and no images are stored on our servers once the text extraction is complete.",
+        ),
         SizedBox(height: 24),
-        Text("3. Your Rights", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+
+        Text(
+          "3. Your Rights",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+        ),
         SizedBox(height: 8),
-        Text("You have the right to request account deletion and clear all local caches at any time. Your data belongs to you."),
+        Text(
+          "You maintain full ownership of your data. You have the right to request permanent account deletion or clear all local caches and history at any time through the Data Management settings.",
+        ),
       ],
     );
   }
@@ -601,17 +874,34 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("1. Disclaimer", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+        Text(
+            "1. Medical Disclaimer",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)
+        ),
         SizedBox(height: 8),
-        Text("Aura Health is an AI assistant, not a licensed medical professional. Always consult a doctor before making medical decisions based on AI analysis."),
+        Text(
+          "Aura Health is an advanced health-tracking tool powered by specialized ML models, not a licensed medical professional. The analysis provided is for informational purposes only. Always consult a qualified doctor or pharmacist before making medical decisions based on app analysis.",
+        ),
         SizedBox(height: 24),
-        Text("2. Accuracy", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+
+        Text(
+            "2. Analysis Accuracy",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)
+        ),
         SizedBox(height: 8),
-        Text("While we use state-of-the-art AI, prescription scanning and calorie counting are estimates. Users are responsible for verifying all logged data."),
+        Text(
+          "While we use state-of-the-art ML for processing, prescription parsing and interaction checks should be treated as estimates. Environmental factors like lighting or image clarity can affect results. Users are ultimately responsible for verifying all logged medication and meal data for accuracy.",
+        ),
         SizedBox(height: 24),
-        Text("3. Usage", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+
+        Text(
+            "3. Responsible Usage",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)
+        ),
         SizedBox(height: 8),
-        Text("By using this app, you agree to provide truthful information to ensure the most accurate health tracking possible."),
+        Text(
+          "By using this app, you agree to provide truthful and complete health information. Accurate inputs are critical to ensuring the ML models provide the most relevant safety alerts regarding your food-drug interactions.",
+        ),
       ],
     );
   }

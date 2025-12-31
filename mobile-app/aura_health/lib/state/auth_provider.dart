@@ -3,6 +3,7 @@
   import 'package:flutter_riverpod/flutter_riverpod.dart';
 
   import '../service/local_storage_service.dart';
+import 'home_provider.dart';
 
   class AppUser {
     final String uid;
@@ -148,6 +149,7 @@
         // 1. Wipe local Hive data
         await LocalStorageService().clearAll();
 
+        ref.read(bottomProvider.notifier).goToNextScreen(BottomNavigator.HOME);
         // 2. Sign out from Firebase
         await FirebaseAuth.instance.signOut();
 
