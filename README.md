@@ -41,6 +41,7 @@ AuraHealth is an AI-powered dietary guardian that bridges the gap between a pati
 **For Food, Drug Recognition and Recommendation System** 
 * Python
 * Yolo
+* Pytorch
 * Fastapi
 * LLM
     
