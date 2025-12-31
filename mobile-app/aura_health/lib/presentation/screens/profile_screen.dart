@@ -101,7 +101,6 @@ class ProfileScreen extends ConsumerWidget {
             // const SectionTitle(title: "Care Network"),
             // const SizedBox(height: 16),
             // const HospitalConnectCard(),
-
             const SizedBox(height: 40),
           ],
         ),
@@ -244,7 +243,29 @@ class PrescriptionVault extends ConsumerWidget {
 
           if (results.isEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("No drugs detected. Please try a clearer photo.")),
+              SnackBar(
+                content: const Row(
+                  children: [
+                    Icon(
+                      Icons.error_outline_outlined,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                    Expanded(
+                      child: Text(
+                        "No drugs detected. Please try a clearer photo.",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+                margin: const EdgeInsetsGeometry.all(16),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                duration: Duration(seconds: 2),
+                backgroundColor: Colors.redAccent,
+
+              ),
             );
           } else {
             // 3. Move to Review Screen where user can edit Dosage/Timing
