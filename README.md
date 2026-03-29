@@ -3,7 +3,7 @@
 AuraHealth is an AI-powered dietary guardian that bridges the gap between a patient's prescription and their plate. Unlike static lists or basic search tools, AuraHealth uses a Knowledge Graph to understand the biochemical reasons behind interactions, ensuring no risk goes undetected.
 
 
-## 🚀 Key Features
+## Key Features
 
 
 
@@ -23,7 +23,7 @@ AuraHealth is an AI-powered dietary guardian that bridges the gap between a pati
 ### 6. **Context-Aware Suggestions**
 * When a risky interaction is detected, the UI dynamically displays safer food alternatives and short explanations tailored to the user’s medication.
   
-## 🛠 Tech Stack Used
+## Tech Stack Used
    
 
 **For graph database creation** 
