@@ -4,11 +4,7 @@ AuraHealth is an AI-powered dietary guardian that bridges the gap between a pati
 
 ## Project Demo
 
-<div align="center">
-  <video src="./AuraHealth-Demo.mp4" width="300" controls>
-    Your browser does not support the video tag.
-  </video>
-</div>
+https://github.com/user-attachments/assets/541d2790-b21d-4089-9bb9-5a4b373bedce
 
 ## Key Features
 
